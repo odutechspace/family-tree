@@ -1,0 +1,32 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+:root {
+    --background-default: #ffffff;
+    --background-secondary: #a3b9cc;
+    --background-tertiary: #5c7d99;
+    --background-light: #ffffff;
+    --background-transluscent: rgba(255, 255, 255, 0.8);
+
+    --text-light: #ffffff;
+    --text-dark: #000;
+
+    --grey: #E4E4E6;
+
+    --primary: #203D3B;
+    --primary-dark: #0D0F0F;
+    --primary-light: #fff;
+
+
+    --secondary: #BF8F73;
+    --secondary-dark: #484645;
+
+    --border-radius-default: 10px;
+
+    /* Shadows */
+    --background-tertiary-shadow: 0 4px 15px rgba(92, 125, 153, 0.5);
+
+    --font-family: 'poppins-regular'
+}
