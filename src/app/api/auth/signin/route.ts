@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
       throw ApiError.forbidden("Invalid credentials.");
     }
 
-    const token = generateToken(user.id);
+    const token = generateToken(user.id, (user as any).role);
 
     // Save the token in an HTTP-only cookie
     const response = apiSuccess({ token }, "Successfully Logged In");

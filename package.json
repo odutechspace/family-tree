@@ -10,6 +10,7 @@
 		"typeorm": "typeorm-ts-node-esm"
 	},
 	"dependencies": {
+		"@hookform/resolvers": "^5.2.2",
 		"@nextui-org/button": "2.2.8",
 		"@nextui-org/code": "2.2.5",
 		"@nextui-org/input": "2.4.7",
@@ -23,9 +24,12 @@
 		"@nextui-org/theme": "2.4.4",
 		"@react-aria/ssr": "3.9.7",
 		"@react-aria/visually-hidden": "3.8.18",
+		"@reactflow/node-resizer": "^2.2.14",
+		"@types/uuid": "^10.0.0",
 		"bcryptjs": "^2.4.3",
 		"class-transformer": "^0.5.1",
 		"clsx": "2.1.1",
+		"date-fns": "^4.1.0",
 		"framer-motion": "11.13.1",
 		"intl-messageformat": "^10.5.0",
 		"jsonwebtoken": "^9.0.2",
@@ -36,9 +40,13 @@
 		"nodemailer": "^6.9.16",
 		"react": "18.3.1",
 		"react-dom": "18.3.1",
+		"react-hook-form": "^7.72.0",
+		"reactflow": "^11.11.4",
 		"reflect-metadata": "^0.2.2",
 		"tailwind-variants": "^0.3.0",
-		"typeorm": "^0.3.20"
+		"typeorm": "^0.3.20",
+		"uuid": "^13.0.0",
+		"zod": "^4.3.6"
 	},
 	"devDependencies": {
 		"@next/eslint-plugin-next": "15.0.4",
