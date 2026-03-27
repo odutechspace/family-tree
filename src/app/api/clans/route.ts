@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
+
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { Clan } from "@/src/api/entities/Clan";
-import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
+import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
+import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
+import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
@@ -28,5 +31,8 @@ export async function POST(req: NextRequest) {
   const repo = AppDataSource.getRepository(Clan);
   const clan = repo.create({ ...body, createdByUserId: user.id });
   const saved = await repo.save(clan);
-  return apiSuccess({ clan: saved }, "Clan created", 201);
+
+  const gamification = await awardXP(user.id, XPEventType.CREATE_CLAN, (saved as any).id, `Created clan: ${body.name}`);
+
+  return apiSuccess({ clan: saved, gamification }, "Clan created", 201);
 }

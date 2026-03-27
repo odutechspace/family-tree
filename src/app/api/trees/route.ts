@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
+
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { FamilyTree } from "@/src/api/entities/FamilyTree";
 import { FamilyTreeMember, TreeMemberRole } from "@/src/api/entities/FamilyTreeMember";
-import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
+import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
+import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
+import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
@@ -38,5 +41,7 @@ export async function POST(req: NextRequest) {
   const member = memberRepo.create({ treeId: saved.id, userId: user.id, personId: 0, role: TreeMemberRole.OWNER });
   await memberRepo.save(member);
 
-  return apiSuccess({ tree: saved }, "Family tree created", 201);
+  const gamification = await awardXP(user.id, XPEventType.CREATE_TREE, saved.id, `Created tree: ${body.name}`);
+
+  return apiSuccess({ tree: saved, gamification }, "Family tree created", 201);
 }

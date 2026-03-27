@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeSwitch } from "@/src/components/theme-switch";
+import XPBar from "@/src/components/gamification/XPBar";
 
 interface AuthUser { id: number; name: string; role: string; }
 
@@ -65,6 +66,7 @@ export function Navbar() {
           <ThemeSwitch />
           {user ? (
             <div className="flex items-center gap-2">
+              <XPBar compact />
               <Link href="/dashboard" className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 rounded-lg transition">
                 <div className="w-5 h-5 rounded-full bg-amber-700 flex items-center justify-center text-xs font-bold text-white">
                   {user.name[0]}
@@ -99,6 +101,9 @@ export function Navbar() {
           {user.role === "admin" && (
             <Link href="/admin" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-stone-400 hover:text-white">Admin</Link>
           )}
+          <Link href="/achievements" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-stone-400 hover:text-white">🏆 Achievements</Link>
+          <Link href="/quests" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-stone-400 hover:text-white">🎯 Quests</Link>
+          <Link href="/leaderboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-stone-400 hover:text-white">🏅 Leaderboard</Link>
           <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-stone-400 hover:text-white">Dashboard</Link>
           <button onClick={logout} className="block w-full text-left px-3 py-2 rounded-lg text-sm text-red-400 hover:text-red-300">Sign Out</button>
         </div>

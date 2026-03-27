@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
+
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { Person } from "@/src/api/entities/Person";
-import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
+import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
+import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
+import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
@@ -42,6 +45,20 @@ export async function POST(req: NextRequest) {
   const repo = AppDataSource.getRepository(Person);
 
   const person = repo.create({ ...body, createdByUserId: user.id });
-  const saved = await repo.save(person);
-  return apiSuccess({ person: saved }, "Person created", 201);
+  const saved = await repo.save(person) as unknown as Person;
+
+  // Award XP: check for photo and biography bonus events too
+  const gamification = await awardXP(user.id, XPEventType.ADD_PERSON, saved.id, `Added ${saved.firstName} ${saved.lastName}`);
+
+  if ((saved as any).photoUrl) {
+    await awardXP(user.id, XPEventType.ADD_PHOTO, saved.id);
+  }
+  if ((saved as any).biography?.trim()) {
+    await awardXP(user.id, XPEventType.WRITE_BIOGRAPHY, saved.id);
+  }
+  if ((saved as any).oralHistory?.trim()) {
+    await awardXP(user.id, XPEventType.WRITE_ORAL_HISTORY, saved.id);
+  }
+
+  return apiSuccess({ person: saved, gamification }, "Person created", 201);
 }

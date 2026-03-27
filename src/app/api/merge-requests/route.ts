@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
+
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { MergeRequest, MergeRequestStatus } from "@/src/api/entities/MergeRequest";
-import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
+import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
+import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
+import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
@@ -47,5 +50,8 @@ export async function POST(req: NextRequest) {
     status: MergeRequestStatus.PENDING,
   });
   const saved = await repo.save(mr);
-  return apiSuccess({ mergeRequest: saved }, "Merge request submitted", 201);
+
+  const gamification = await awardXP(user.id, XPEventType.SUBMIT_MERGE_REQUEST, (saved as any).id, "Submitted merge request");
+
+  return apiSuccess({ mergeRequest: saved, gamification }, "Merge request submitted", 201);
 }

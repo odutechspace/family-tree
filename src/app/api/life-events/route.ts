@@ -1,9 +1,12 @@
 import { NextRequest } from "next/server";
+
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { LifeEvent } from "@/src/api/entities/LifeEvent";
-import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
+import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
+import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
+import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
@@ -30,5 +33,8 @@ export async function POST(req: NextRequest) {
   const repo = AppDataSource.getRepository(LifeEvent);
   const event = repo.create({ ...body, createdByUserId: user.id });
   const saved = await repo.save(event);
-  return apiSuccess({ event: saved }, "Life event created", 201);
+
+  const gamification = await awardXP(user.id, XPEventType.ADD_LIFE_EVENT, (saved as any).id, `Recorded ${body.type} event`);
+
+  return apiSuccess({ event: saved, gamification }, "Life event created", 201);
 }

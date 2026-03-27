@@ -1,11 +1,14 @@
 import { NextRequest } from "next/server";
+
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { MergeRequest, MergeRequestStatus, MergeRequestType } from "@/src/api/entities/MergeRequest";
 import { Person } from "@/src/api/entities/Person";
 import { FamilyTreeMember } from "@/src/api/entities/FamilyTreeMember";
-import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
+import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
+import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
+import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await initializeDataSource();
@@ -43,6 +46,12 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   }
 
   await repo.save(mr);
+
+  // Award XP to the requester when their merge is approved
+  if (decision === "approved" && mr.requestedByUserId) {
+    await awardXP(mr.requestedByUserId, XPEventType.MERGE_APPROVED, mr.id, "Merge request approved");
+  }
+
   return apiSuccess({ mergeRequest: mr }, `Merge request ${decision}`);
 }
 
