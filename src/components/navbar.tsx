@@ -3,8 +3,10 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
 import { Logo } from "@/src/components/icons";
+import { motionTransition } from "@/src/components/motion";
 import { ThemeSwitch } from "@/src/components/theme-switch";
 import { Button } from "@/src/components/ui/button";
 import XPBar from "@/src/components/gamification/XPBar";
@@ -27,13 +29,14 @@ const NAV_LINKS = [
 export function Navbar() {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
+  const reduce = useReducedMotion();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
   useEffect(() => {
     fetch("/api/users/me")
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => setUser(data?.data?.user || null))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setUser(data?.data?.user || null))
       .catch(() => setUser(null));
   }, [pathname]);
 
@@ -47,34 +50,30 @@ export function Navbar() {
 
   const navClass = (href: string, exact?: boolean) =>
     cn(
-      "px-3 py-1.5 rounded-lg text-sm font-medium transition",
+      "rounded-lg px-3 py-1.5 text-sm font-medium transition",
       exact
         ? pathname === href
           ? "bg-primary/15 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+          : "text-muted-foreground hover:bg-muted hover:text-foreground"
         : pathname.startsWith(href)
           ? "bg-primary/15 text-primary"
-          : "text-muted-foreground hover:text-foreground hover:bg-muted",
+          : "text-muted-foreground hover:bg-muted hover:text-foreground",
     );
 
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
-        <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2.5 shrink-0">
-          <Logo
-            className="h-8 w-8 shrink-0"
-            size={32}
-            variant={resolvedTheme === "light" ? "default" : "onDark"}
-          />
+    <nav className="fixed left-0 right-0 top-0 z-50 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4">
+        <Link href={user ? "/dashboard" : "/"} className="flex shrink-0 items-center gap-2.5">
+          <Logo className="h-8 w-8 shrink-0" size={32} variant={resolvedTheme === "light" ? "default" : "onDark"} />
           <span className="flex flex-col leading-tight">
-            <span className="text-primary font-bold text-lg sm:text-xl tracking-tight">My Ukoo</span>
-            <span className="hidden sm:inline text-muted-foreground text-[10px]">Discover · Connect · Preserve</span>
+            <span className="text-lg font-bold tracking-tight text-primary sm:text-xl">My Ukoo</span>
+            <span className="hidden text-[10px] text-muted-foreground sm:inline">Discover · Connect · Preserve</span>
           </span>
         </Link>
 
         {user && (
-          <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(link => (
+          <div className="hidden items-center gap-1 md:flex">
+            {NAV_LINKS.map((link) => (
               <Link key={link.href} href={link.href} className={navClass(link.href)}>
                 {link.label}
               </Link>
@@ -95,7 +94,7 @@ export function Navbar() {
               <Button variant="secondary" size="sm" className="hidden sm:flex" asChild>
                 <Link href="/profile" title="Your profile">
                   <span className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
                       {user.name[0]}
                     </span>
                     <span className="max-w-[100px] truncate">{user.name.split(" ")[0]}</span>
@@ -107,7 +106,8 @@ export function Navbar() {
                 size="icon"
                 className="md:hidden"
                 onClick={() => setMenuOpen(!menuOpen)}
-                aria-label="Open menu"
+                aria-expanded={menuOpen}
+                aria-label={menuOpen ? "Close menu" : "Open menu"}
               >
                 ☰
               </Button>
@@ -125,44 +125,86 @@ export function Navbar() {
         </div>
       </div>
 
-      {menuOpen && user && (
-        <div className="md:hidden border-t border-border bg-background px-4 py-3 space-y-1">
-          {NAV_LINKS.map(link => (
-            <Link
-              key={link.href}
-              href={link.href}
-              onClick={() => setMenuOpen(false)}
-              className={cn("block px-3 py-2 rounded-lg text-sm", navClass(link.href))}
-            >
-              {link.label}
-            </Link>
-          ))}
-          {user.role === "admin" && (
-            <Link href="/admin" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
-              Admin
-            </Link>
-          )}
-          <Link href="/achievements" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
-            Achievements
-          </Link>
-          <Link href="/quests" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
-            Quests
-          </Link>
-          <Link href="/leaderboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
-            Leaderboard
-          </Link>
-          <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
-            Dashboard
-          </Link>
-          <button
-            type="button"
-            onClick={logout}
-            className="block w-full text-left px-3 py-2 rounded-lg text-sm text-destructive hover:text-destructive/90"
+      <AnimatePresence initial={false}>
+        {menuOpen && user && (
+          <motion.div
+            key="nav-mobile-panel"
+            className="border-t border-border bg-background md:hidden"
+            initial={reduce ? false : { opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={reduce ? undefined : { opacity: 0, height: 0 }}
+            transition={reduce ? { duration: 0 } : { ...motionTransition, duration: 0.28 }}
+            style={{ overflow: "hidden" }}
           >
-            Sign Out
-          </button>
-        </div>
-      )}
+            <div className="space-y-1 px-4 py-3">
+              {NAV_LINKS.map((link, i) => (
+                <motion.div
+                  key={link.href}
+                  initial={reduce ? false : { opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{
+                    ...motionTransition,
+                    duration: 0.2,
+                    delay: reduce ? 0 : i * 0.04,
+                  }}
+                >
+                  <Link
+                    href={link.href}
+                    onClick={() => setMenuOpen(false)}
+                    className={cn("block rounded-lg px-3 py-2 text-sm", navClass(link.href))}
+                  >
+                    {link.label}
+                  </Link>
+                </motion.div>
+              ))}
+              {user.role === "admin" && (
+                <Link
+                  href="/admin"
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+                >
+                  Admin
+                </Link>
+              )}
+              <Link
+                href="/achievements"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Achievements
+              </Link>
+              <Link
+                href="/quests"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Quests
+              </Link>
+              <Link
+                href="/leaderboard"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Leaderboard
+              </Link>
+              <Link
+                href="/dashboard"
+                onClick={() => setMenuOpen(false)}
+                className="block rounded-lg px-3 py-2 text-sm text-muted-foreground hover:text-foreground"
+              >
+                Dashboard
+              </Link>
+              <button
+                type="button"
+                onClick={logout}
+                className="block w-full rounded-lg px-3 py-2 text-left text-sm text-destructive hover:text-destructive/90"
+              >
+                Sign Out
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </nav>
   );
 }

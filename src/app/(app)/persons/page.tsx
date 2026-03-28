@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { FadeIn, StaggerItem, StaggerList } from "@/src/components/motion";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
@@ -53,7 +54,7 @@ export default function PersonsPage() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       <div className="mx-auto max-w-6xl px-4 py-8">
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <FadeIn className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">People Directory</h1>
             <p className="mt-1 text-muted-foreground">{total} people in the database</p>
@@ -61,7 +62,7 @@ export default function PersonsPage() {
           <Button asChild size="lg">
             <Link href="/persons/new">+ Add Person</Link>
           </Button>
-        </div>
+        </FadeIn>
 
         <Input
           type="text"
@@ -85,36 +86,38 @@ export default function PersonsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
+          <StaggerList className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {persons.map((p) => (
-              <Link key={p.id} href={`/persons/${p.id}`} className="group block">
-                <Card className="h-full border-border transition-colors hover:border-primary/40">
-                  <CardContent className="flex flex-col items-center gap-3 p-4">
-                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-muted text-2xl font-bold text-primary">
-                      {p.photoUrl ? (
-                        <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
-                      ) : (
-                        `${p.firstName[0]}${p.lastName[0]}`
-                      )}
-                    </div>
-                    <div className="text-center">
-                      <p className="font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
-                        {p.firstName} {p.lastName}
-                      </p>
-                      {p.nickname && <p className="mt-0.5 text-xs text-muted-foreground">&quot;{p.nickname}&quot;</p>}
-                      <div className="mt-2 flex flex-wrap justify-center gap-1">
-                        <span className={`rounded-full px-2 py-0.5 text-xs ${genderChipClass(p.gender)}`}>{p.gender}</span>
-                        {p.aliveStatus === "deceased" && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">†</span>
+              <StaggerItem key={p.id}>
+                <Link href={`/persons/${p.id}`} className="group block">
+                  <Card className="h-full border-border transition-colors hover:border-primary/40">
+                    <CardContent className="flex flex-col items-center gap-3 p-4">
+                      <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-muted text-2xl font-bold text-primary">
+                        {p.photoUrl ? (
+                          <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          `${p.firstName[0]}${p.lastName[0]}`
                         )}
                       </div>
-                      {p.tribeEthnicity && <p className="mt-1 text-xs text-muted-foreground">{p.tribeEthnicity}</p>}
-                    </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                      <div className="text-center">
+                        <p className="font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+                          {p.firstName} {p.lastName}
+                        </p>
+                        {p.nickname && <p className="mt-0.5 text-xs text-muted-foreground">&quot;{p.nickname}&quot;</p>}
+                        <div className="mt-2 flex flex-wrap justify-center gap-1">
+                          <span className={`rounded-full px-2 py-0.5 text-xs ${genderChipClass(p.gender)}`}>{p.gender}</span>
+                          {p.aliveStatus === "deceased" && (
+                            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">†</span>
+                          )}
+                        </div>
+                        {p.tribeEthnicity && <p className="mt-1 text-xs text-muted-foreground">{p.tribeEthnicity}</p>}
+                      </div>
+                    </CardContent>
+                  </Card>
+                </Link>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         )}
       </div>
     </div>

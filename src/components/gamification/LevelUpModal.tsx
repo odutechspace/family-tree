@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
-const LEVEL_NAMES = ["Seedling", "Root Finder", "Branch Builder", "Tree Keeper", "Elder Scribe", "Clan Historian", "Ancestral Voice", "Griot Master"];
+import { motionTransition } from "@/src/components/motion";
+
 const LEVEL_ICONS = ["🌱", "🔍", "🌿", "🌳", "✍️", "🦁", "🎙️", "🏆"];
 
 interface Props {
@@ -11,48 +13,64 @@ interface Props {
 }
 
 export default function LevelUpModal({ newLevel, newLevelName, onClose }: Props) {
-  const [visible, setVisible] = useState(false);
-
-  useEffect(() => {
-    setTimeout(() => setVisible(true), 50);
-  }, []);
-
+  const reduce = useReducedMotion();
   const icon = LEVEL_ICONS[newLevel - 1] || "⭐";
 
   return (
-    <div className={`fixed inset-0 z-[100] flex items-center justify-center bg-black/80 transition-opacity duration-300 ${visible ? "opacity-100" : "opacity-0"}`}>
-      <div className={`relative bg-stone-900 border-2 border-amber-500 rounded-3xl p-10 max-w-sm w-full mx-4 text-center transition-all duration-500 ${visible ? "scale-100 opacity-100" : "scale-75 opacity-0"}`}>
-        {/* Confetti-like particles */}
-        <div className="absolute inset-0 overflow-hidden rounded-3xl pointer-events-none">
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} className="absolute animate-bounce"
-              style={{
-                left: `${Math.random() * 90}%`,
-                top: `${Math.random() * 90}%`,
-                animationDelay: `${Math.random() * 0.5}s`,
-                animationDuration: `${0.8 + Math.random() * 0.5}s`,
-                fontSize: `${12 + Math.floor(Math.random() * 8)}px`,
-              }}>
-              {["✨", "🌟", "⭐", "💫"][Math.floor(Math.random() * 4)]}
-            </div>
-          ))}
-        </div>
+    <AnimatePresence>
+      <motion.div
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80"
+        initial={reduce ? false : { opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={reduce ? undefined : { opacity: 0 }}
+        transition={reduce ? { duration: 0 } : { duration: 0.25 }}
+      >
+        <motion.div
+          className="relative mx-4 w-full max-w-sm rounded-3xl border-2 border-amber-500 bg-stone-900 p-10 text-center"
+          initial={reduce ? false : { opacity: 0, scale: 0.92, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={reduce ? undefined : { opacity: 0, scale: 0.95, y: 8 }}
+          transition={reduce ? { duration: 0 } : { ...motionTransition, duration: 0.38 }}
+        >
+          <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div
+                key={i}
+                className="absolute animate-bounce"
+                style={{
+                  left: `${(i * 7.5) % 90}%`,
+                  top: `${(i * 11) % 85}%`,
+                  animationDelay: `${(i % 5) * 0.1}s`,
+                  animationDuration: `${0.85 + (i % 3) * 0.15}s`,
+                  fontSize: `${12 + (i % 4) * 2}px`,
+                }}
+              >
+                {["✨", "🌟", "⭐", "💫"][i % 4]}
+              </div>
+            ))}
+          </div>
 
-        <div className="text-7xl mb-4 animate-bounce">{icon}</div>
-        <p className="text-amber-400 text-sm font-semibold uppercase tracking-widest mb-2">Level Up!</p>
-        <h2 className="text-3xl font-bold text-white mb-1">Level {newLevel}</h2>
-        <p className="text-amber-300 text-xl font-semibold mb-6">{newLevelName}</p>
+          <div className="relative z-[1]">
+            <div className="mb-4 animate-bounce text-7xl">{icon}</div>
+            <p className="mb-2 text-sm font-semibold uppercase tracking-widest text-amber-400">Level Up!</p>
+            <h2 className="mb-1 text-3xl font-bold text-white">Level {newLevel}</h2>
+            <p className="mb-6 text-xl font-semibold text-amber-300">{newLevelName}</p>
 
-        <p className="text-stone-400 text-sm mb-8 leading-relaxed">
-          The ancestors are proud. Keep adding family members, recording stories, and preserving your heritage.
-        </p>
+            <p className="mb-8 text-sm leading-relaxed text-stone-400">
+              The ancestors are proud. Keep adding family members, recording stories, and preserving your heritage.
+            </p>
 
-        <button onClick={onClose}
-          className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition text-lg">
-          Continue Building 🌳
-        </button>
-      </div>
-    </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="w-full rounded-xl bg-amber-600 py-3 text-lg font-bold text-white transition hover:bg-amber-500"
+            >
+              Continue Building 🌳
+            </button>
+          </div>
+        </motion.div>
+      </motion.div>
+    </AnimatePresence>
   );
 }
 
@@ -62,24 +80,38 @@ interface AchievementToastProps {
 }
 
 export function AchievementToast({ achievements, onClose }: AchievementToastProps) {
+  const reduce = useReducedMotion();
+
   useEffect(() => {
     const t = setTimeout(onClose, 5000);
     return () => clearTimeout(t);
   }, []);
 
   return (
-    <div className="fixed bottom-6 right-6 z-[90] flex flex-col gap-2 max-w-xs">
-      {achievements.map(ach => (
-        <div key={ach.key}
-          className="bg-stone-800 border border-amber-600 rounded-xl p-4 shadow-xl flex items-center gap-3 animate-slide-in">
-          <span className="text-3xl">{ach.icon}</span>
-          <div>
-            <p className="text-xs text-amber-400 font-semibold uppercase tracking-wide">Achievement Unlocked!</p>
-            <p className="text-white font-semibold text-sm">{ach.name}</p>
-            {ach.xpReward > 0 && <p className="text-amber-300 text-xs">+{ach.xpReward} XP</p>}
-          </div>
-        </div>
-      ))}
+    <div className="pointer-events-none fixed bottom-6 right-6 z-[90] flex max-w-xs flex-col gap-2">
+      <AnimatePresence>
+        {achievements.map((ach, i) => (
+          <motion.div
+            key={ach.key}
+            className="pointer-events-auto flex items-center gap-3 rounded-xl border border-amber-600 bg-stone-800 p-4 shadow-xl"
+            initial={reduce ? false : { opacity: 0, x: 48, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={reduce ? undefined : { opacity: 0, x: 32 }}
+            transition={{
+              ...motionTransition,
+              delay: reduce ? 0 : i * 0.06,
+            }}
+            layout
+          >
+            <span className="text-3xl">{ach.icon}</span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-amber-400">Achievement Unlocked!</p>
+              <p className="text-sm font-semibold text-white">{ach.name}</p>
+              {ach.xpReward > 0 && <p className="text-xs text-amber-300">+{ach.xpReward} XP</p>}
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }
@@ -90,24 +122,38 @@ interface QuestToastProps {
 }
 
 export function QuestCompletedToast({ quests, onClose }: QuestToastProps) {
+  const reduce = useReducedMotion();
+
   useEffect(() => {
     const t = setTimeout(onClose, 4000);
     return () => clearTimeout(t);
   }, []);
 
   return (
-    <div className="fixed bottom-6 left-6 z-[90] flex flex-col gap-2 max-w-xs">
-      {quests.map(q => (
-        <div key={q.key}
-          className="bg-stone-800 border border-green-600 rounded-xl p-4 shadow-xl flex items-center gap-3">
-          <span className="text-2xl">{q.icon}</span>
-          <div>
-            <p className="text-xs text-green-400 font-semibold uppercase tracking-wide">Quest Complete!</p>
-            <p className="text-white font-semibold text-sm">{q.title}</p>
-            <p className="text-amber-300 text-xs">+{q.xpReward} XP</p>
-          </div>
-        </div>
-      ))}
+    <div className="pointer-events-none fixed bottom-6 left-6 z-[90] flex max-w-xs flex-col gap-2">
+      <AnimatePresence>
+        {quests.map((q, i) => (
+          <motion.div
+            key={q.key}
+            className="pointer-events-auto flex items-center gap-3 rounded-xl border border-green-600 bg-stone-800 p-4 shadow-xl"
+            initial={reduce ? false : { opacity: 0, x: -48, scale: 0.96 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={reduce ? undefined : { opacity: 0, x: -32 }}
+            transition={{
+              ...motionTransition,
+              delay: reduce ? 0 : i * 0.06,
+            }}
+            layout
+          >
+            <span className="text-2xl">{q.icon}</span>
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-green-400">Quest Complete!</p>
+              <p className="text-sm font-semibold text-white">{q.title}</p>
+              <p className="text-xs text-amber-300">+{q.xpReward} XP</p>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </div>
   );
 }

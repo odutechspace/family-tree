@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "@/src/hooks/useAuth";
+import { FadeIn, StaggerItem, StaggerList } from "@/src/components/motion";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Textarea } from "@/src/components/ui/textarea";
@@ -55,7 +56,7 @@ export default function MergeRequestsPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-4xl">
-        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <FadeIn className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">Merge Requests</h1>
             <p className="mt-1 text-muted-foreground">Propose and manage family history merges</p>
@@ -63,9 +64,9 @@ export default function MergeRequestsPage() {
           <Button asChild size="lg">
             <Link href="/merge-requests/new">+ New Merge Request</Link>
           </Button>
-        </div>
+        </FadeIn>
 
-        <div className="mb-6 flex flex-wrap gap-2">
+        <FadeIn className="mb-6 flex flex-wrap gap-2" delay={0.05}>
           {["all", "pending", "approved", "rejected"].map((s) => (
             <Button
               key={s}
@@ -78,7 +79,7 @@ export default function MergeRequestsPage() {
               {s}
             </Button>
           ))}
-        </div>
+        </FadeIn>
 
         {loading ? (
           <div className="space-y-3">
@@ -95,46 +96,48 @@ export default function MergeRequestsPage() {
             </Button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <StaggerList key={statusFilter} className="space-y-3">
             {filtered.map((mr) => (
-              <Card key={mr.id}>
-                <CardContent className="p-5">
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="mb-2 flex items-center gap-2">
-                        <span
-                          className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[mr.status] || "border-border bg-muted text-muted-foreground"}`}
-                        >
-                          {mr.status}
-                        </span>
-                        <span className="text-xs text-muted-foreground">
-                          {mr.type === "duplicate_person" ? "👤 Duplicate Person" : "🌳 Family Trees"}
-                        </span>
+              <StaggerItem key={mr.id}>
+                <Card>
+                  <CardContent className="p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="mb-2 flex items-center gap-2">
+                          <span
+                            className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[mr.status] || "border-border bg-muted text-muted-foreground"}`}
+                          >
+                            {mr.status}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            {mr.type === "duplicate_person" ? "👤 Duplicate Person" : "🌳 Family Trees"}
+                          </span>
+                        </div>
+
+                        {mr.type === "duplicate_person" && (
+                          <p className="text-sm text-foreground">
+                            Merge Person #{mr.sourcePersonId} into Person #{mr.targetPersonId}
+                          </p>
+                        )}
+                        {mr.type === "family_trees" && (
+                          <p className="text-sm text-foreground">
+                            Merge Tree #{mr.sourceTreeId} into Tree #{mr.targetTreeId}
+                          </p>
+                        )}
+
+                        {mr.reason && <p className="mt-1 text-sm italic text-muted-foreground">&quot;{mr.reason}&quot;</p>}
+                        <p className="mt-2 text-xs text-muted-foreground">{new Date(mr.createdAt).toLocaleDateString()}</p>
                       </div>
 
-                      {mr.type === "duplicate_person" && (
-                        <p className="text-sm text-foreground">
-                          Merge Person #{mr.sourcePersonId} into Person #{mr.targetPersonId}
-                        </p>
+                      {user?.role === "admin" && mr.status === "pending" && (
+                        <ReviewButtons mergeRequestId={mr.id} onReviewed={fetchRequests} />
                       )}
-                      {mr.type === "family_trees" && (
-                        <p className="text-sm text-foreground">
-                          Merge Tree #{mr.sourceTreeId} into Tree #{mr.targetTreeId}
-                        </p>
-                      )}
-
-                      {mr.reason && <p className="mt-1 text-sm italic text-muted-foreground">&quot;{mr.reason}&quot;</p>}
-                      <p className="mt-2 text-xs text-muted-foreground">{new Date(mr.createdAt).toLocaleDateString()}</p>
                     </div>
-
-                    {user?.role === "admin" && mr.status === "pending" && (
-                      <ReviewButtons mergeRequestId={mr.id} onReviewed={fetchRequests} />
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
+              </StaggerItem>
             ))}
-          </div>
+          </StaggerList>
         )}
       </div>
     </div>

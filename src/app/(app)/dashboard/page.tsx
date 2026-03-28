@@ -7,6 +7,7 @@ import { useAuth } from "@/src/hooks/useAuth";
 import XPBar from "@/src/components/gamification/XPBar";
 import QuestCard from "@/src/components/gamification/QuestCard";
 import AchievementBadge from "@/src/components/gamification/AchievementBadge";
+import { FadeIn, StaggerItem, StaggerList } from "@/src/components/motion";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
 
@@ -102,7 +103,7 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-center justify-between">
+        <FadeIn className="mb-6 flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back,{" "}
@@ -113,37 +114,55 @@ export default function DashboardPage() {
           <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={logout}>
             Sign Out
           </Button>
-        </div>
+        </FadeIn>
 
-        <div className="mb-6">
+        <FadeIn className="mb-6" delay={0.06}>
           <XPBar />
-        </div>
+        </FadeIn>
 
-        <div className="mb-6 grid grid-cols-3 gap-3">
-          <StatCard href="/trees?mine=1" value={stats.trees} label="My Trees" icon="🌳" />
-          <StatCard href="/persons" value={stats.persons} label="People" icon="👥" />
-          <StatCard
-            href="/merge-requests"
-            value={stats.pendingMerges}
-            label="Pending Merges"
-            icon="🔗"
-            highlight={stats.pendingMerges > 0}
-          />
-        </div>
+        <StaggerList className="mb-6 grid grid-cols-3 gap-3">
+          <StaggerItem>
+            <StatCard href="/trees?mine=1" value={stats.trees} label="My Trees" icon="🌳" />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard href="/persons" value={stats.persons} label="People" icon="👥" />
+          </StaggerItem>
+          <StaggerItem>
+            <StatCard
+              href="/merge-requests"
+              value={stats.pendingMerges}
+              label="Pending Merges"
+              icon="🔗"
+              highlight={stats.pendingMerges > 0}
+            />
+          </StaggerItem>
+        </StaggerList>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <ActionCard href="/persons/new" icon="👤" title="Add Person" color="blue" />
-              <ActionCard href="/trees/new" icon="🌳" title="New Tree" color="green" />
-              <ActionCard href="/merge-requests/new" icon="🔗" title="Merge History" color="amber" />
-              <ActionCard href="/clans/new" icon="🦁" title="Add Clan" color="orange" />
-              <ActionCard href="/persons" icon="🔍" title="Browse People" color="purple" />
-              <ActionCard href="/quests" icon="🎯" title="View Quests" color="red" />
-            </div>
+            <StaggerList className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+              <StaggerItem>
+                <ActionCard href="/persons/new" icon="👤" title="Add Person" color="blue" />
+              </StaggerItem>
+              <StaggerItem>
+                <ActionCard href="/trees/new" icon="🌳" title="New Tree" color="green" />
+              </StaggerItem>
+              <StaggerItem>
+                <ActionCard href="/merge-requests/new" icon="🔗" title="Merge History" color="amber" />
+              </StaggerItem>
+              <StaggerItem>
+                <ActionCard href="/clans/new" icon="🦁" title="Add Clan" color="orange" />
+              </StaggerItem>
+              <StaggerItem>
+                <ActionCard href="/persons" icon="🔍" title="Browse People" color="purple" />
+              </StaggerItem>
+              <StaggerItem>
+                <ActionCard href="/quests" icon="🎯" title="View Quests" color="red" />
+              </StaggerItem>
+            </StaggerList>
 
             {todayQuests.length > 0 && (
-              <div>
+              <FadeIn delay={0.08}>
                 <div className="mb-3 flex items-center justify-between">
                   <h2 className="flex items-center gap-2 font-semibold text-amber-600 dark:text-amber-400">
                     <span>🎯</span> Active Quests
@@ -152,27 +171,29 @@ export default function DashboardPage() {
                     <Link href="/quests">View all →</Link>
                   </Button>
                 </div>
-                <div className="space-y-2">
+                <StaggerList className="space-y-2">
                   {todayQuests.map((q) => (
-                    <QuestCard
-                      key={q.key}
-                      icon={q.icon}
-                      title={q.title}
-                      description={q.description}
-                      type={q.type}
-                      targetCount={q.targetCount}
-                      xpReward={q.xpReward}
-                      progress={q.progress}
-                      isCompleted={q.isCompleted}
-                    />
+                    <StaggerItem key={q.key}>
+                      <QuestCard
+                        icon={q.icon}
+                        title={q.title}
+                        description={q.description}
+                        type={q.type}
+                        targetCount={q.targetCount}
+                        xpReward={q.xpReward}
+                        progress={q.progress}
+                        isCompleted={q.isCompleted}
+                      />
+                    </StaggerItem>
                   ))}
-                </div>
-              </div>
+                </StaggerList>
+              </FadeIn>
             )}
           </div>
 
           <div className="space-y-6">
             {recentAchievements.length > 0 && (
+              <FadeIn delay={0.05}>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-base font-semibold text-amber-600 dark:text-amber-400">Recent Badges</CardTitle>
@@ -181,26 +202,29 @@ export default function DashboardPage() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid grid-cols-4 gap-2">
+                  <StaggerList className="grid grid-cols-4 gap-2">
                     {recentAchievements.map((a) => (
-                      <AchievementBadge
-                        key={a.key}
-                        icon={a.icon}
-                        name={a.name}
-                        description={a.description}
-                        rarity={a.rarity}
-                        category={a.category}
-                        xpReward={a.xpReward}
-                        isUnlocked={true}
-                        unlockedAt={a.unlockedAt}
-                        size="sm"
-                      />
+                      <StaggerItem key={a.key}>
+                        <AchievementBadge
+                          icon={a.icon}
+                          name={a.name}
+                          description={a.description}
+                          rarity={a.rarity}
+                          category={a.category}
+                          xpReward={a.xpReward}
+                          isUnlocked={true}
+                          unlockedAt={a.unlockedAt}
+                          size="sm"
+                        />
+                      </StaggerItem>
                     ))}
-                  </div>
+                  </StaggerList>
                 </CardContent>
               </Card>
+              </FadeIn>
             )}
 
+            <FadeIn delay={0.07}>
             <Card>
               <CardContent className="space-y-1 p-2">
                 <Button variant="ghost" className="h-auto w-full justify-between px-3 py-2 font-normal" asChild>
@@ -229,39 +253,45 @@ export default function DashboardPage() {
                 </Button>
               </CardContent>
             </Card>
+            </FadeIn>
 
             {activityFeed.length > 0 && (
+              <FadeIn delay={0.09}>
               <Card>
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base font-semibold text-amber-600 dark:text-amber-400">Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-2.5">
+                  <StaggerList className="space-y-2.5">
                     {activityFeed.slice(0, 6).map((ev) => (
-                      <div key={ev.id} className="flex items-center gap-2">
-                        <span className="text-base">{XP_ICONS[ev.type] || "⚡"}</span>
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-xs text-foreground">
-                            {ev.description || ev.type.replace(/_/g, " ")}
-                          </p>
-                          <p className="text-xs text-muted-foreground">{new Date(ev.createdAt).toLocaleDateString()}</p>
+                      <StaggerItem key={ev.id}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-base">{XP_ICONS[ev.type] || "⚡"}</span>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs text-foreground">
+                              {ev.description || ev.type.replace(/_/g, " ")}
+                            </p>
+                            <p className="text-xs text-muted-foreground">{new Date(ev.createdAt).toLocaleDateString()}</p>
+                          </div>
+                          {ev.xpAwarded != null && ev.xpAwarded > 0 && (
+                            <span className="flex-shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">
+                              +{ev.xpAwarded}
+                            </span>
+                          )}
                         </div>
-                        {ev.xpAwarded != null && ev.xpAwarded > 0 && (
-                          <span className="flex-shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">
-                            +{ev.xpAwarded}
-                          </span>
-                        )}
-                      </div>
+                      </StaggerItem>
                     ))}
-                  </div>
+                  </StaggerList>
                 </CardContent>
               </Card>
+              </FadeIn>
             )}
           </div>
         </div>
 
         {user.role === "admin" && (
-          <Card className="mt-6 border-amber-300 bg-gradient-to-r from-amber-500/10 to-orange-500/5 dark:border-amber-700/50 dark:from-amber-900/25 dark:to-orange-950/20">
+          <FadeIn className="mt-6" delay={0.1}>
+          <Card className="border-amber-300 bg-gradient-to-r from-amber-500/10 to-orange-500/5 dark:border-amber-700/50 dark:from-amber-900/25 dark:to-orange-950/20">
             <CardContent className="flex flex-col items-stretch justify-between gap-4 p-5 sm:flex-row sm:items-center">
               <div>
                 <h2 className="font-semibold text-amber-700 dark:text-amber-400">Admin Panel</h2>
@@ -275,6 +305,7 @@ export default function DashboardPage() {
               </Button>
             </CardContent>
           </Card>
+          </FadeIn>
         )}
       </div>
     </div>
