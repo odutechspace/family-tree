@@ -51,8 +51,14 @@ export default function AchievementsPage() {
       });
   }, []);
 
-  const categories = ["all", ...Array.from(new Set(achievements.map((a) => a.category)))];
-  const filtered = activeCategory === "all" ? achievements : achievements.filter((a) => a.category === activeCategory);
+  const categories = [
+    "all",
+    ...Array.from(new Set(achievements.map((a) => a.category))),
+  ];
+  const filtered =
+    activeCategory === "all"
+      ? achievements
+      : achievements.filter((a) => a.category === activeCategory);
   const unlocked = filtered.filter((a) => a.isUnlocked);
   const locked = filtered.filter((a) => !a.isUnlocked);
   const pct = Math.floor((totalUnlocked / Math.max(total, 1)) * 100);
@@ -61,14 +67,16 @@ export default function AchievementsPage() {
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-5xl">
         <div className="mb-6 flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
+          <Button asChild size="sm" variant="ghost">
             <Link href="/dashboard">← Dashboard</Link>
           </Button>
         </div>
 
         <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-amber-600 dark:text-amber-400">Achievements</h1>
+            <h1 className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+              Achievements
+            </h1>
             <p className="mt-1 text-muted-foreground">
               {totalUnlocked}/{total} unlocked
             </p>
@@ -81,7 +89,9 @@ export default function AchievementsPage() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{pct}%</span>
+              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                {pct}%
+              </span>
             </CardContent>
           </Card>
         </div>
@@ -92,17 +102,19 @@ export default function AchievementsPage() {
           {categories.map((cat) => (
             <Button
               key={cat}
-              type="button"
-              size="sm"
-              variant={activeCategory === cat ? "default" : "secondary"}
               className={
                 activeCategory === cat
                   ? "bg-amber-600 text-white hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
                   : "capitalize"
               }
+              size="sm"
+              type="button"
+              variant={activeCategory === cat ? "default" : "secondary"}
               onClick={() => setActiveCategory(cat)}
             >
-              {cat === "all" ? "All" : `${CATEGORY_LABELS[cat]?.icon || ""} ${CATEGORY_LABELS[cat]?.label || cat}`}
+              {cat === "all"
+                ? "All"
+                : `${CATEGORY_LABELS[cat]?.icon || ""} ${CATEGORY_LABELS[cat]?.label || cat}`}
             </Button>
           ))}
         </div>
@@ -124,14 +136,14 @@ export default function AchievementsPage() {
                   {unlocked.map((a) => (
                     <AchievementBadge
                       key={a.key}
-                      icon={a.icon}
-                      name={a.name}
-                      description={a.description}
-                      rarity={a.rarity}
                       category={a.category}
-                      xpReward={a.xpReward}
+                      description={a.description}
+                      icon={a.icon}
                       isUnlocked={true}
+                      name={a.name}
+                      rarity={a.rarity}
                       unlockedAt={a.unlockedAt}
+                      xpReward={a.xpReward}
                     />
                   ))}
                 </div>
@@ -147,13 +159,13 @@ export default function AchievementsPage() {
                   {locked.map((a) => (
                     <AchievementBadge
                       key={a.key}
-                      icon={a.icon}
-                      name={a.name}
-                      description={a.description}
-                      rarity={a.rarity}
                       category={a.category}
-                      xpReward={a.xpReward}
+                      description={a.description}
+                      icon={a.icon}
                       isUnlocked={false}
+                      name={a.name}
+                      rarity={a.rarity}
+                      xpReward={a.xpReward}
                     />
                   ))}
                 </div>

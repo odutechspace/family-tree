@@ -13,28 +13,39 @@ export async function GET(req: NextRequest) {
   const repo = AppDataSource.getRepository(LifeEvent);
   const { searchParams } = new URL(req.url);
   const personId = searchParams.get("personId");
-  if (!personId) return apiError(ApiError.badRequest("personId query param is required."));
+
+  if (!personId)
+    return apiError(ApiError.badRequest("personId query param is required."));
 
   const events = await repo.find({
     where: { personId: Number(personId) },
     order: { eventDate: "ASC" },
   });
+
   return apiSuccess({ events }, "Life events retrieved");
 }
 
 export async function POST(req: NextRequest) {
   await initializeDataSource();
   const user = await getAuthUser(req);
+
   if (!user) return apiError(ApiError.unauthorized("Authentication required."));
 
   const body = await req.json();
-  if (!body.personId || !body.type) return apiError(ApiError.badRequest("personId and type are required."));
+
+  if (!body.personId || !body.type)
+    return apiError(ApiError.badRequest("personId and type are required."));
 
   const repo = AppDataSource.getRepository(LifeEvent);
   const event = repo.create({ ...body, createdByUserId: user.id });
   const saved = await repo.save(event);
 
-  const gamification = await awardXP(user.id, XPEventType.ADD_LIFE_EVENT, (saved as any).id, `Recorded ${body.type} event`);
+  const gamification = await awardXP(
+    user.id,
+    XPEventType.ADD_LIFE_EVENT,
+    (saved as any).id,
+    `Recorded ${body.type} event`,
+  );
 
   return apiSuccess({ event: saved, gamification }, "Life event created", 201);
 }

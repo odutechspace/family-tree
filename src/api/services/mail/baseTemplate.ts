@@ -78,4 +78,4 @@ export const baseTemplate = (body: string, email: string): string => {
 </html>
 
 `;
-}
+};

@@ -8,7 +8,12 @@ import XPBar from "@/src/components/gamification/XPBar";
 import QuestCard from "@/src/components/gamification/QuestCard";
 import AchievementBadge from "@/src/components/gamification/AchievementBadge";
 import { Button } from "@/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
 
 interface Quest {
   key: string;
@@ -36,12 +41,24 @@ interface RecentAchievement {
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({ trees: 0, persons: 0, pendingMerges: 0 });
+  const [stats, setStats] = useState({
+    trees: 0,
+    persons: 0,
+    pendingMerges: 0,
+  });
   const [todayQuests, setTodayQuests] = useState<Quest[]>([]);
-  const [recentAchievements, setRecentAchievements] = useState<RecentAchievement[]>([]);
-  const [activityFeed, setActivityFeed] = useState<{ id: string; type: string; description?: string; createdAt: string; xpAwarded?: number }[]>(
-    [],
-  );
+  const [recentAchievements, setRecentAchievements] = useState<
+    RecentAchievement[]
+  >([]);
+  const [activityFeed, setActivityFeed] = useState<
+    {
+      id: string;
+      type: string;
+      description?: string;
+      createdAt: string;
+      xpAwarded?: number;
+    }[]
+  >([]);
 
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
@@ -57,28 +74,47 @@ export default function DashboardPage() {
       fetch("/api/gamification/quests").then((r) => r.json()),
       fetch("/api/gamification/profile").then((r) => r.json()),
       fetch("/api/gamification/activity?limit=8").then((r) => r.json()),
-    ]).then(([treesData, personsData, mergesData, questsData, profileData, activityData]) => {
-      setStats({
-        trees: (treesData.data?.trees || []).length,
-        persons: personsData.data?.total || 0,
-        pendingMerges: (mergesData.data?.requests || []).length,
-      });
+    ]).then(
+      ([
+        treesData,
+        personsData,
+        mergesData,
+        questsData,
+        profileData,
+        activityData,
+      ]) => {
+        setStats({
+          trees: (treesData.data?.trees || []).length,
+          persons: personsData.data?.total || 0,
+          pendingMerges: (mergesData.data?.requests || []).length,
+        });
 
-      const q = questsData.data?.quests;
-      if (q) {
-        const daily = (q.daily || []).filter((x: Quest) => !x.isCompleted).slice(0, 3);
-        const onboarding = (q.onboarding || []).filter((x: Quest) => !x.isCompleted).slice(0, 2);
-        setTodayQuests([...onboarding, ...daily].slice(0, 4));
-      }
+        const q = questsData.data?.quests;
 
-      setRecentAchievements(profileData.data?.recentAchievements?.slice(0, 4) || []);
-      setActivityFeed(activityData.data?.events || []);
-    });
+        if (q) {
+          const daily = (q.daily || [])
+            .filter((x: Quest) => !x.isCompleted)
+            .slice(0, 3);
+          const onboarding = (q.onboarding || [])
+            .filter((x: Quest) => !x.isCompleted)
+            .slice(0, 2);
+
+          setTodayQuests([...onboarding, ...daily].slice(0, 4));
+        }
+
+        setRecentAchievements(
+          profileData.data?.recentAchievements?.slice(0, 4) || [],
+        );
+        setActivityFeed(activityData.data?.events || []);
+      },
+    );
   }, [user]);
 
   if (loading || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading...
+      </div>
     );
   }
 
@@ -106,11 +142,20 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back,{" "}
-              <span className="text-amber-600 dark:text-amber-400">{user.name.split(" ")[0]}</span>
+              <span className="text-amber-600 dark:text-amber-400">
+                {user.name.split(" ")[0]}
+              </span>
             </h1>
-            <p className="mt-0.5 text-sm text-muted-foreground">Keep building your family legacy</p>
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Keep building your family legacy
+            </p>
           </div>
-          <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-destructive" onClick={logout}>
+          <Button
+            className="text-muted-foreground hover:text-destructive"
+            size="sm"
+            variant="ghost"
+            onClick={logout}
+          >
             Sign Out
           </Button>
         </div>
@@ -120,26 +165,66 @@ export default function DashboardPage() {
         </div>
 
         <div className="mb-6 grid grid-cols-3 gap-3">
-          <StatCard href="/trees?mine=1" value={stats.trees} label="My Trees" icon="🌳" />
-          <StatCard href="/persons" value={stats.persons} label="People" icon="👥" />
           <StatCard
-            href="/merge-requests"
-            value={stats.pendingMerges}
-            label="Pending Merges"
-            icon="🔗"
+            href="/trees?mine=1"
+            icon="🌳"
+            label="My Trees"
+            value={stats.trees}
+          />
+          <StatCard
+            href="/persons"
+            icon="👥"
+            label="People"
+            value={stats.persons}
+          />
+          <StatCard
             highlight={stats.pendingMerges > 0}
+            href="/merge-requests"
+            icon="🔗"
+            label="Pending Merges"
+            value={stats.pendingMerges}
           />
         </div>
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <ActionCard href="/persons/new" icon="👤" title="Add Person" color="blue" />
-              <ActionCard href="/trees/new" icon="🌳" title="New Tree" color="green" />
-              <ActionCard href="/merge-requests/new" icon="🔗" title="Merge History" color="amber" />
-              <ActionCard href="/clans/new" icon="🦁" title="Add Clan" color="orange" />
-              <ActionCard href="/persons" icon="🔍" title="Browse People" color="purple" />
-              <ActionCard href="/quests" icon="🎯" title="View Quests" color="red" />
+              <ActionCard
+                color="blue"
+                href="/persons/new"
+                icon="👤"
+                title="Add Person"
+              />
+              <ActionCard
+                color="green"
+                href="/trees/new"
+                icon="🌳"
+                title="New Tree"
+              />
+              <ActionCard
+                color="amber"
+                href="/merge-requests/new"
+                icon="🔗"
+                title="Merge History"
+              />
+              <ActionCard
+                color="orange"
+                href="/clans/new"
+                icon="🦁"
+                title="Add Clan"
+              />
+              <ActionCard
+                color="purple"
+                href="/persons"
+                icon="🔍"
+                title="Browse People"
+              />
+              <ActionCard
+                color="red"
+                href="/quests"
+                icon="🎯"
+                title="View Quests"
+              />
             </div>
 
             {todayQuests.length > 0 && (
@@ -148,7 +233,11 @@ export default function DashboardPage() {
                   <h2 className="flex items-center gap-2 font-semibold text-amber-600 dark:text-amber-400">
                     <span>🎯</span> Active Quests
                   </h2>
-                  <Button variant="link" className="h-auto p-0 text-xs text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400" asChild>
+                  <Button
+                    asChild
+                    className="h-auto p-0 text-xs text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
+                    variant="link"
+                  >
                     <Link href="/quests">View all →</Link>
                   </Button>
                 </div>
@@ -156,14 +245,14 @@ export default function DashboardPage() {
                   {todayQuests.map((q) => (
                     <QuestCard
                       key={q.key}
-                      icon={q.icon}
-                      title={q.title}
                       description={q.description}
-                      type={q.type}
-                      targetCount={q.targetCount}
-                      xpReward={q.xpReward}
-                      progress={q.progress}
+                      icon={q.icon}
                       isCompleted={q.isCompleted}
+                      progress={q.progress}
+                      targetCount={q.targetCount}
+                      title={q.title}
+                      type={q.type}
+                      xpReward={q.xpReward}
                     />
                   ))}
                 </div>
@@ -175,8 +264,14 @@ export default function DashboardPage() {
             {recentAchievements.length > 0 && (
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-base font-semibold text-amber-600 dark:text-amber-400">Recent Badges</CardTitle>
-                  <Button variant="link" className="h-auto p-0 text-xs text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400" asChild>
+                  <CardTitle className="text-base font-semibold text-amber-600 dark:text-amber-400">
+                    Recent Badges
+                  </CardTitle>
+                  <Button
+                    asChild
+                    className="h-auto p-0 text-xs text-muted-foreground hover:text-amber-600 dark:hover:text-amber-400"
+                    variant="link"
+                  >
                     <Link href="/achievements">View all →</Link>
                   </Button>
                 </CardHeader>
@@ -185,15 +280,15 @@ export default function DashboardPage() {
                     {recentAchievements.map((a) => (
                       <AchievementBadge
                         key={a.key}
-                        icon={a.icon}
-                        name={a.name}
-                        description={a.description}
-                        rarity={a.rarity}
                         category={a.category}
-                        xpReward={a.xpReward}
+                        description={a.description}
+                        icon={a.icon}
                         isUnlocked={true}
-                        unlockedAt={a.unlockedAt}
+                        name={a.name}
+                        rarity={a.rarity}
                         size="sm"
+                        unlockedAt={a.unlockedAt}
+                        xpReward={a.xpReward}
                       />
                     ))}
                   </div>
@@ -203,7 +298,11 @@ export default function DashboardPage() {
 
             <Card>
               <CardContent className="space-y-1 p-2">
-                <Button variant="ghost" className="h-auto w-full justify-between px-3 py-2 font-normal" asChild>
+                <Button
+                  asChild
+                  className="h-auto w-full justify-between px-3 py-2 font-normal"
+                  variant="ghost"
+                >
                   <Link href="/achievements">
                     <span className="flex items-center gap-2 text-sm text-foreground">
                       <span>🏆</span> Achievements
@@ -211,7 +310,11 @@ export default function DashboardPage() {
                     <span className="text-xs text-muted-foreground">→</span>
                   </Link>
                 </Button>
-                <Button variant="ghost" className="h-auto w-full justify-between px-3 py-2 font-normal" asChild>
+                <Button
+                  asChild
+                  className="h-auto w-full justify-between px-3 py-2 font-normal"
+                  variant="ghost"
+                >
                   <Link href="/quests">
                     <span className="flex items-center gap-2 text-sm text-foreground">
                       <span>🎯</span> Quests
@@ -219,7 +322,11 @@ export default function DashboardPage() {
                     <span className="text-xs text-muted-foreground">→</span>
                   </Link>
                 </Button>
-                <Button variant="ghost" className="h-auto w-full justify-between px-3 py-2 font-normal" asChild>
+                <Button
+                  asChild
+                  className="h-auto w-full justify-between px-3 py-2 font-normal"
+                  variant="ghost"
+                >
                   <Link href="/leaderboard">
                     <span className="flex items-center gap-2 text-sm text-foreground">
                       <span>🏅</span> Leaderboard
@@ -233,18 +340,24 @@ export default function DashboardPage() {
             {activityFeed.length > 0 && (
               <Card>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base font-semibold text-amber-600 dark:text-amber-400">Recent Activity</CardTitle>
+                  <CardTitle className="text-base font-semibold text-amber-600 dark:text-amber-400">
+                    Recent Activity
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2.5">
                     {activityFeed.slice(0, 6).map((ev) => (
                       <div key={ev.id} className="flex items-center gap-2">
-                        <span className="text-base">{XP_ICONS[ev.type] || "⚡"}</span>
+                        <span className="text-base">
+                          {XP_ICONS[ev.type] || "⚡"}
+                        </span>
                         <div className="min-w-0 flex-1">
                           <p className="truncate text-xs text-foreground">
                             {ev.description || ev.type.replace(/_/g, " ")}
                           </p>
-                          <p className="text-xs text-muted-foreground">{new Date(ev.createdAt).toLocaleDateString()}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {new Date(ev.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
                         {ev.xpAwarded != null && ev.xpAwarded > 0 && (
                           <span className="flex-shrink-0 text-xs font-medium text-amber-600 dark:text-amber-400">
@@ -264,12 +377,16 @@ export default function DashboardPage() {
           <Card className="mt-6 border-amber-300 bg-gradient-to-r from-amber-500/10 to-orange-500/5 dark:border-amber-700/50 dark:from-amber-900/25 dark:to-orange-950/20">
             <CardContent className="flex flex-col items-stretch justify-between gap-4 p-5 sm:flex-row sm:items-center">
               <div>
-                <h2 className="font-semibold text-amber-700 dark:text-amber-400">Admin Panel</h2>
-                <p className="mt-0.5 text-sm text-muted-foreground">Manage users, review merges, oversee data</p>
+                <h2 className="font-semibold text-amber-700 dark:text-amber-400">
+                  Admin Panel
+                </h2>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Manage users, review merges, oversee data
+                </p>
               </div>
               <Button
-                className="shrink-0 bg-amber-600 text-white hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
                 asChild
+                className="shrink-0 bg-amber-600 text-white hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
               >
                 <Link href="/admin">Open Admin →</Link>
               </Button>
@@ -296,12 +413,12 @@ function StatCard({
 }) {
   return (
     <Link
-      href={href}
       className={`rounded-xl border bg-card p-4 text-center shadow-sm transition-colors ${
         highlight
           ? "border-amber-500 dark:border-amber-500"
           : "border-border hover:border-amber-400/60 dark:hover:border-amber-500/50"
       }`}
+      href={href}
     >
       <p className="mb-1 text-2xl">{icon}</p>
       <p
@@ -327,16 +444,21 @@ function ActionCard({
 }) {
   const borders: Record<string, string> = {
     blue: "hover:border-blue-500 hover:bg-blue-50/50 dark:hover:border-blue-500/60 dark:hover:bg-blue-950/20",
-    green: "hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:border-green-500/60 dark:hover:bg-green-950/20",
-    amber: "hover:border-amber-500 hover:bg-amber-50/50 dark:hover:border-amber-500/60 dark:hover:bg-amber-950/20",
-    orange: "hover:border-orange-500 hover:bg-orange-50/50 dark:hover:border-orange-500/60 dark:hover:bg-orange-950/20",
-    purple: "hover:border-purple-500 hover:bg-purple-50/50 dark:hover:border-purple-500/60 dark:hover:bg-purple-950/20",
+    green:
+      "hover:border-emerald-500 hover:bg-emerald-50/50 dark:hover:border-green-500/60 dark:hover:bg-green-950/20",
+    amber:
+      "hover:border-amber-500 hover:bg-amber-50/50 dark:hover:border-amber-500/60 dark:hover:bg-amber-950/20",
+    orange:
+      "hover:border-orange-500 hover:bg-orange-50/50 dark:hover:border-orange-500/60 dark:hover:bg-orange-950/20",
+    purple:
+      "hover:border-purple-500 hover:bg-purple-50/50 dark:hover:border-purple-500/60 dark:hover:bg-purple-950/20",
     red: "hover:border-red-500 hover:bg-red-50/50 dark:hover:border-red-500/60 dark:hover:bg-red-950/20",
   };
+
   return (
     <Link
-      href={href}
       className={`group flex flex-col items-center gap-2 rounded-xl border border-border bg-card p-4 shadow-sm transition-colors ${borders[color]}`}
+      href={href}
     >
       <span className="text-2xl">{icon}</span>
       <span className="text-center text-xs font-medium text-muted-foreground transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-400">

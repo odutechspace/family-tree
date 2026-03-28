@@ -14,7 +14,6 @@ let mailQueue: Queue<MailJobPayload, void, "send"> | null = null;
 
 function getMailQueue(): Queue<MailJobPayload, void, "send"> {
   if (!mailQueue) {
-
     mailQueue = new Queue<MailJobPayload, void, "send">(MAIL_QUEUE_NAME, {
       connection: createRedisForBullmq(),
       defaultJobOptions: {

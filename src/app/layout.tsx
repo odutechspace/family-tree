@@ -3,6 +3,7 @@ import { Metadata, Viewport } from "next";
 import clsx from "clsx";
 
 import { Providers } from "./providers";
+
 import { siteConfig } from "@/src/config/site";
 import { fontSans } from "@/src/config/fonts";
 import { LOGOS } from "@/src/config/logos";
@@ -27,16 +28,23 @@ export const viewport: Viewport = {
   ],
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html suppressHydrationWarning lang="en">
       <head />
-      <body className={clsx("min-h-screen bg-background text-foreground font-sans antialiased", fontSans.variable)}>
+      <body
+        className={clsx(
+          "min-h-screen bg-background text-foreground font-sans antialiased",
+          fontSans.variable,
+        )}
+      >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
           <Navbar />
-          <main className="pt-14">
-            {children}
-          </main>
+          <main className="pt-14">{children}</main>
         </Providers>
       </body>
     </html>

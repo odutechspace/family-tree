@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 
 import { ApiError } from "./ApiError";
 
-export const apiSuccess = (data: any, message = "Success", statusCode = 200) => {
+export const apiSuccess = (
+  data: any,
+  message = "Success",
+  statusCode = 200,
+) => {
   return NextResponse.json(
     {
       success: true,
       message,
-      data
+      data,
     },
-    { status: statusCode }
+    { status: statusCode },
   );
 };
 
@@ -19,9 +23,9 @@ export const apiError = (error: ApiError | Error) => {
       {
         success: false,
         message: error.message,
-        details: error.details || null
+        details: error.details || null,
       },
-      { status: error.statusCode }
+      { status: error.statusCode },
     );
   }
 
@@ -30,8 +34,8 @@ export const apiError = (error: ApiError | Error) => {
     {
       success: false,
       message: "An unexpected error occurred.",
-      details: null
+      details: null,
     },
-    { status: 500 }
+    { status: 500 },
   );
 };

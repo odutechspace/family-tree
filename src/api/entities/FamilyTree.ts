@@ -27,7 +27,11 @@ export class FamilyTree {
   @Column()
   ownerUserId: number;
 
-  @Column({ type: "enum", enum: TreeVisibility, default: TreeVisibility.PRIVATE })
+  @Column({
+    type: "enum",
+    enum: TreeVisibility,
+    default: TreeVisibility.PRIVATE,
+  })
   visibility: TreeVisibility;
 
   // Cover image for the tree

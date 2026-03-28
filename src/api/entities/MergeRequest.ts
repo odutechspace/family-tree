@@ -33,7 +33,11 @@ export class MergeRequest {
   @Column({ type: "enum", enum: MergeRequestType })
   type: MergeRequestType;
 
-  @Column({ type: "enum", enum: MergeRequestStatus, default: MergeRequestStatus.PENDING })
+  @Column({
+    type: "enum",
+    enum: MergeRequestStatus,
+    default: MergeRequestStatus.PENDING,
+  })
   status: MergeRequestStatus;
 
   // For DUPLICATE_PERSON merges

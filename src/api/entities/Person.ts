@@ -2,9 +2,6 @@ import {
   Column,
   CreateDateColumn,
   Entity,
-  JoinColumn,
-  ManyToOne,
-  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from "typeorm";
@@ -84,6 +81,22 @@ export class Person {
 
   @Column({ nullable: true })
   originCountry: string;
+
+  /**
+   * Short shareable platform code e.g. "UKOO-7K3M2".
+   * Auto-generated on creation. Anyone can share this code with a relative
+   * building their own tree to say "this node = this person."
+   */
+  @Column({ nullable: true, unique: true })
+  personCode: string;
+
+  /**
+   * HMAC-SHA256 hash of the person's E.164 phone number (never stored in plain).
+   * Used to auto-link a Person record to a User account when the user's
+   * phoneHash matches on registration or profile update.
+   */
+  @Column({ nullable: true })
+  phoneHash: string;
 
   // The user account that manages this person (optional — guests may have no account)
   @Column({ nullable: true })

@@ -26,12 +26,14 @@ export default function ClansPage() {
     setLoading(true);
     const res = await fetch(`/api/clans?search=${encodeURIComponent(q)}`);
     const data = await res.json();
+
     setClans(data.data?.clans || []);
     setLoading(false);
   };
 
   useEffect(() => {
     const t = setTimeout(() => fetchClans(search), 300);
+
     return () => clearTimeout(t);
   }, [search]);
 
@@ -44,8 +46,12 @@ export default function ClansPage() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Clans & Lineages</h1>
-            <p className="mt-1 text-muted-foreground">Explore African clans, totems, and ancestral groups</p>
+            <h1 className="text-3xl font-bold text-primary">
+              Clans & Lineages
+            </h1>
+            <p className="mt-1 text-muted-foreground">
+              Explore African clans, totems, and ancestral groups
+            </p>
           </div>
           <Button asChild size="lg">
             <Link href="/clans/new">+ Add Clan</Link>
@@ -53,11 +59,11 @@ export default function ClansPage() {
         </div>
 
         <Input
-          type="text"
+          className="mb-6 h-11"
           placeholder="Search clans, totems, ethnic groups..."
+          type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="mb-6 h-11"
         />
 
         {loading ? (
@@ -70,14 +76,18 @@ export default function ClansPage() {
           <div className="py-16 text-center text-muted-foreground">
             <p className="mb-4 text-5xl">🦁</p>
             <p className="mb-2 text-lg">No clans found</p>
-            <Button variant="link" asChild className="text-primary">
+            <Button asChild className="text-primary" variant="link">
               <Link href="/clans/new">Add the first clan →</Link>
             </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {clans.map((clan) => (
-              <Link key={clan.id} href={`/clans/${clan.id}`} className="group block">
+              <Link
+                key={clan.id}
+                className="group block"
+                href={`/clans/${clan.id}`}
+              >
                 <Card className="h-full border-border transition-colors hover:border-primary/40">
                   <CardContent className="p-5">
                     <div className="mb-3 flex items-start justify-between">
@@ -90,8 +100,14 @@ export default function ClansPage() {
                         </span>
                       )}
                     </div>
-                    <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary">{clan.name}</h3>
-                    {clan.alternateName && <p className="text-sm text-primary/80">{clan.alternateName}</p>}
+                    <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary">
+                      {clan.name}
+                    </h3>
+                    {clan.alternateName && (
+                      <p className="text-sm text-primary/80">
+                        {clan.alternateName}
+                      </p>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-1.5">
                       {clan.totem && (
                         <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary">
@@ -99,7 +115,9 @@ export default function ClansPage() {
                         </span>
                       )}
                       {clan.ethnicGroup && (
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{clan.ethnicGroup}</span>
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {clan.ethnicGroup}
+                        </span>
                       )}
                       {clan.originCountry && (
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">

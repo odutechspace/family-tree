@@ -15,8 +15,9 @@ export async function GET(req: NextRequest) {
 
   const topXP = await xpRepo.find({ order: { totalXP: "DESC" }, take: limit });
 
-  const userIds = topXP.map(x => x.userId);
+  const userIds = topXP.map((x) => x.userId);
   let users: User[] = [];
+
   if (userIds.length > 0) {
     users = await userRepo
       .createQueryBuilder("u")
@@ -25,11 +26,12 @@ export async function GET(req: NextRequest) {
       .getMany();
   }
 
-  const userMap = new Map(users.map(u => [u.id, u]));
+  const userMap = new Map(users.map((u) => [u.id, u]));
 
   const leaderboard = topXP.map((xp, index) => {
     const user = userMap.get(xp.userId);
     const level = calcLevel(xp.totalXP);
+
     return {
       rank: index + 1,
       userId: xp.userId,

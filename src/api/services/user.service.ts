@@ -9,7 +9,7 @@ const userRepository = AppDataSource.getRepository(User);
 export const createUser = async (
   name: string,
   email: string,
-  password: string
+  password: string,
 ) => {
   console.log(name);
   console.log(password);
@@ -17,7 +17,7 @@ export const createUser = async (
   const newUser = userRepository.create({
     name,
     email,
-    password: hashedPassword
+    password: hashedPassword,
   });
 
   return await userRepository.save(newUser);
@@ -25,13 +25,15 @@ export const createUser = async (
 
 export const findUserByEmail = async (email: string) => {
   const user = await userRepository.findOne({ where: { email } });
+
   console.log(user);
+
   return user;
 };
 
 export const validatePassword = async (
   password: string,
-  hashedPassword: string
+  hashedPassword: string,
 ) => {
   return await bcrypt.compare(password, hashedPassword);
 };

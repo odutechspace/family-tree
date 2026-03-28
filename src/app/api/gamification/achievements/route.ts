@@ -11,6 +11,7 @@ import { ACHIEVEMENT_SEEDS } from "@/src/api/services/gamification/achievements.
 export async function GET(req: NextRequest) {
   await initializeDataSource();
   const auth = await getAuthUser(req);
+
   if (!auth) return apiError(ApiError.unauthorized("Authentication required."));
 
   const achRepo = AppDataSource.getRepository(Achievement);
@@ -19,14 +20,20 @@ export async function GET(req: NextRequest) {
   // Ensure seeded
   for (const seed of ACHIEVEMENT_SEEDS) {
     const existing = await achRepo.findOne({ where: { key: seed.key } });
+
     if (!existing) await achRepo.save(achRepo.create(seed as any));
   }
 
-  const allAchievements = await achRepo.find({ where: { isActive: true }, order: { category: "ASC", rarity: "ASC" } });
+  const allAchievements = await achRepo.find({
+    where: { isActive: true },
+    order: { category: "ASC", rarity: "ASC" },
+  });
   const unlocked = await userAchRepo.find({ where: { userId: auth.id } });
-  const unlockedMap = new Map(unlocked.map(u => [u.achievementKey, u.unlockedAt]));
+  const unlockedMap = new Map(
+    unlocked.map((u) => [u.achievementKey, u.unlockedAt]),
+  );
 
-  const achievements = allAchievements.map(a => ({
+  const achievements = allAchievements.map((a) => ({
     id: a.id,
     key: a.key,
     name: a.name,
@@ -41,7 +48,10 @@ export async function GET(req: NextRequest) {
     unlockedAt: unlockedMap.get(a.key) ?? null,
   }));
 
-  const totalUnlocked = achievements.filter(a => a.isUnlocked).length;
+  const totalUnlocked = achievements.filter((a) => a.isUnlocked).length;
 
-  return apiSuccess({ achievements, totalUnlocked, total: achievements.length }, "Achievements retrieved");
+  return apiSuccess(
+    { achievements, totalUnlocked, total: achievements.length },
+    "Achievements retrieved",
+  );
 }

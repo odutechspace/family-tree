@@ -6,14 +6,14 @@ import {
 } from "typeorm";
 
 export enum AchievementCategory {
-  BUILDER = "builder",       // Adding people & relationships
-  HISTORIAN = "historian",   // Stories, oral history, biographies
-  CONNECTOR = "connector",   // Merging trees & linking clans
-  EXPLORER = "explorer",     // Discovering new branches
-  SOCIAL = "social",         // Inviting family, sharing
-  STREAK = "streak",         // Consistency
-  MILESTONE = "milestone",   // Big numerical milestones
-  SPECIAL = "special",       // Cultural, seasonal
+  BUILDER = "builder", // Adding people & relationships
+  HISTORIAN = "historian", // Stories, oral history, biographies
+  CONNECTOR = "connector", // Merging trees & linking clans
+  EXPLORER = "explorer", // Discovering new branches
+  SOCIAL = "social", // Inviting family, sharing
+  STREAK = "streak", // Consistency
+  MILESTONE = "milestone", // Big numerical milestones
+  SPECIAL = "special", // Cultural, seasonal
 }
 
 export enum AchievementRarity {
@@ -44,7 +44,11 @@ export class Achievement {
   @Column({ type: "enum", enum: AchievementCategory })
   category: AchievementCategory;
 
-  @Column({ type: "enum", enum: AchievementRarity, default: AchievementRarity.COMMON })
+  @Column({
+    type: "enum",
+    enum: AchievementRarity,
+    default: AchievementRarity.COMMON,
+  })
   rarity: AchievementRarity;
 
   @Column({ default: 50 })

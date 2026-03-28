@@ -32,8 +32,8 @@ export function Navbar() {
 
   useEffect(() => {
     fetch("/api/users/me")
-      .then(r => (r.ok ? r.json() : null))
-      .then(data => setUser(data?.data?.user || null))
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => setUser(data?.data?.user || null))
       .catch(() => setUser(null));
   }, [pathname]);
 
@@ -60,27 +60,38 @@ export function Navbar() {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border bg-background/90 backdrop-blur supports-[backdrop-filter]:bg-background/80">
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
-        <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2.5 shrink-0">
+        <Link
+          className="flex items-center gap-2.5 shrink-0"
+          href={user ? "/dashboard" : "/"}
+        >
           <Logo
             className="h-8 w-8 shrink-0"
             size={32}
             variant={resolvedTheme === "light" ? "default" : "onDark"}
           />
           <span className="flex flex-col leading-tight">
-            <span className="text-primary font-bold text-lg sm:text-xl tracking-tight">My Ukoo</span>
-            <span className="hidden sm:inline text-muted-foreground text-[10px]">Discover · Connect · Preserve</span>
+            <span className="text-primary font-bold text-lg sm:text-xl tracking-tight">
+              My Ukoo
+            </span>
+            <span className="hidden sm:inline text-muted-foreground text-[10px]">
+              Discover · Connect · Preserve
+            </span>
           </span>
         </Link>
 
         {user && (
           <div className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map(link => (
-              <Link key={link.href} href={link.href} className={navClass(link.href)}>
+            {NAV_LINKS.map((link) => (
+              <Link
+                key={link.href}
+                className={navClass(link.href)}
+                href={link.href}
+              >
                 {link.label}
               </Link>
             ))}
             {user.role === "admin" && (
-              <Link href="/admin" className={navClass("/admin", true)}>
+              <Link className={navClass("/admin", true)} href="/admin">
                 Admin
               </Link>
             )}
@@ -92,32 +103,39 @@ export function Navbar() {
           {user ? (
             <div className="flex items-center gap-2">
               <XPBar compact />
-              <Button variant="secondary" size="sm" className="hidden sm:flex" asChild>
+              <Button
+                asChild
+                className="hidden sm:flex"
+                size="sm"
+                variant="secondary"
+              >
                 <Link href="/profile" title="Your profile">
                   <span className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold">
                       {user.name[0]}
                     </span>
-                    <span className="max-w-[100px] truncate">{user.name.split(" ")[0]}</span>
+                    <span className="max-w-[100px] truncate">
+                      {user.name.split(" ")[0]}
+                    </span>
                   </span>
                 </Link>
               </Button>
               <Button
-                variant="ghost"
-                size="icon"
-                className="md:hidden"
-                onClick={() => setMenuOpen(!menuOpen)}
                 aria-label="Open menu"
+                className="md:hidden"
+                size="icon"
+                variant="ghost"
+                onClick={() => setMenuOpen(!menuOpen)}
               >
                 ☰
               </Button>
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm" asChild>
+              <Button asChild size="sm" variant="ghost">
                 <Link href="/auth/login">Sign In</Link>
               </Button>
-              <Button size="sm" asChild>
+              <Button asChild size="sm">
                 <Link href="/auth/register">Get Started</Link>
               </Button>
             </div>
@@ -127,37 +145,60 @@ export function Navbar() {
 
       {menuOpen && user && (
         <div className="md:hidden border-t border-border bg-background px-4 py-3 space-y-1">
-          {NAV_LINKS.map(link => (
+          {NAV_LINKS.map((link) => (
             <Link
               key={link.href}
+              className={cn(
+                "block px-3 py-2 rounded-lg text-sm",
+                navClass(link.href),
+              )}
               href={link.href}
               onClick={() => setMenuOpen(false)}
-              className={cn("block px-3 py-2 rounded-lg text-sm", navClass(link.href))}
             >
               {link.label}
             </Link>
           ))}
           {user.role === "admin" && (
-            <Link href="/admin" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
+            <Link
+              className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+              href="/admin"
+              onClick={() => setMenuOpen(false)}
+            >
               Admin
             </Link>
           )}
-          <Link href="/achievements" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            href="/achievements"
+            onClick={() => setMenuOpen(false)}
+          >
             Achievements
           </Link>
-          <Link href="/quests" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            href="/quests"
+            onClick={() => setMenuOpen(false)}
+          >
             Quests
           </Link>
-          <Link href="/leaderboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            href="/leaderboard"
+            onClick={() => setMenuOpen(false)}
+          >
             Leaderboard
           </Link>
-          <Link href="/dashboard" onClick={() => setMenuOpen(false)} className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
+            href="/dashboard"
+            onClick={() => setMenuOpen(false)}
+          >
             Dashboard
           </Link>
           <button
+            className="block w-full text-left px-3 py-2 rounded-lg text-sm text-destructive hover:text-destructive/90"
             type="button"
             onClick={logout}
-            className="block w-full text-left px-3 py-2 rounded-lg text-sm text-destructive hover:text-destructive/90"
           >
             Sign Out
           </button>

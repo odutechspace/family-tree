@@ -4,7 +4,12 @@ import { useParams } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import {
@@ -60,6 +65,24 @@ interface Person {
   originVillage?: string;
   originCountry?: string;
   isVerified: boolean;
+  personCode?: string;
+}
+
+interface SuggestedMatch {
+  person: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    gender: string;
+    birthDate?: string;
+    aliveStatus: string;
+    photoUrl?: string;
+    personCode?: string;
+    tribeEthnicity?: string;
+    originCountry?: string;
+  };
+  score: number;
+  reasons: string[];
 }
 
 const EVENT_ICONS: Record<string, string> = {
@@ -90,14 +113,25 @@ export default function PersonDetailPage() {
   const [showAddRel, setShowAddRel] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [relatedPersons, setRelatedPersons] = useState<Person[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedMatch[]>([]);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const fetchData = async () => {
     const res = await fetch(`/api/persons/${id}`);
     const data = await res.json();
+
     if (res.ok) {
       setPerson(data.data.person);
       setRelationships(data.data.relationships || []);
       setLifeEvents(data.data.lifeEvents || []);
+
+      // Load possible duplicate suggestions in the background
+      fetch(`/api/persons/suggestions?personId=${id}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) setSuggestions(d.data.suggestions || []);
+        })
+        .catch(() => {});
     }
     setLoading(false);
   };
@@ -106,6 +140,7 @@ export default function PersonDetailPage() {
     if (relatedPersons.find((p) => p.id === personId)) return;
     const res = await fetch(`/api/persons/${personId}`);
     const data = await res.json();
+
     if (res.ok) setRelatedPersons((prev) => [...prev, data.data.person]);
   };
 
@@ -116,12 +151,15 @@ export default function PersonDetailPage() {
   useEffect(() => {
     relationships.forEach((r) => {
       const otherId = r.personAId === Number(id) ? r.personBId : r.personAId;
+
       fetchRelatedPerson(otherId);
     });
   }, [relationships]);
 
   const getRelatedPerson = (rel: Relationship) => {
-    const otherId = rel.personAId === Number(id) ? rel.personBId : rel.personAId;
+    const otherId =
+      rel.personAId === Number(id) ? rel.personBId : rel.personAId;
+
     return relatedPersons.find((p) => p.id === otherId);
   };
 
@@ -139,17 +177,22 @@ export default function PersonDetailPage() {
       co_wife: "Co-wife with",
       levirate: "Levirate union with",
     };
+
     return labels[type] || type;
   };
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading...
+      </div>
     );
   }
   if (!person) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-destructive">Person not found.</div>
+      <div className="flex min-h-screen items-center justify-center bg-background text-destructive">
+        Person not found.
+      </div>
     );
   }
 
@@ -157,7 +200,7 @@ export default function PersonDetailPage() {
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-4xl">
         <div className="mb-8 flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
+          <Button asChild size="sm" variant="ghost">
             <Link href="/persons">← People</Link>
           </Button>
         </div>
@@ -166,7 +209,11 @@ export default function PersonDetailPage() {
           <CardContent className="flex flex-col gap-6 p-6 sm:flex-row">
             <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-3xl font-bold text-primary">
               {person.photoUrl ? (
-                <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+                <img
+                  alt=""
+                  className="h-full w-full object-cover"
+                  src={person.photoUrl}
+                />
               ) : (
                 `${person.firstName[0]}${person.lastName[0]}`
               )}
@@ -182,13 +229,25 @@ export default function PersonDetailPage() {
                   </span>
                 )}
                 {person.aliveStatus === "deceased" && (
-                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">†</span>
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                    †
+                  </span>
                 )}
               </div>
-              {person.nickname && <p className="mb-1 text-primary/90">&quot;{person.nickname}&quot;</p>}
-              {person.maidenName && <p className="text-sm text-muted-foreground">née {person.maidenName}</p>}
+              {person.nickname && (
+                <p className="mb-1 text-primary/90">
+                  &quot;{person.nickname}&quot;
+                </p>
+              )}
+              {person.maidenName && (
+                <p className="text-sm text-muted-foreground">
+                  née {person.maidenName}
+                </p>
+              )}
               <div className="mt-3 flex flex-wrap gap-2">
-                {person.tribeEthnicity && <Badge>{person.tribeEthnicity}</Badge>}
+                {person.tribeEthnicity && (
+                  <Badge>{person.tribeEthnicity}</Badge>
+                )}
                 {person.totem && <Badge>Totem: {person.totem}</Badge>}
                 {person.originCountry && (
                   <Badge>
@@ -196,17 +255,45 @@ export default function PersonDetailPage() {
                     {person.originCountry}
                   </Badge>
                 )}
-                {person.birthDate && <Badge>Born {new Date(person.birthDate).getFullYear()}</Badge>}
-                {person.deathDate && <Badge>† {new Date(person.deathDate).getFullYear()}</Badge>}
+                {person.birthDate && (
+                  <Badge>Born {new Date(person.birthDate).getFullYear()}</Badge>
+                )}
+                {person.deathDate && (
+                  <Badge>† {new Date(person.deathDate).getFullYear()}</Badge>
+                )}
               </div>
             </div>
             <div className="flex flex-col gap-2 sm:items-end">
-              <Button variant="secondary" size="sm" asChild>
+              <Button asChild size="sm" variant="secondary">
                 <Link href={`/persons/${id}/edit`}>Edit</Link>
               </Button>
-              <Button variant="outline" size="sm" asChild className="border-primary/40 text-primary">
-                <Link href={`/merge-requests/new?sourcePersonId=${id}`}>Request Merge</Link>
+              <Button
+                asChild
+                className="border-primary/40 text-primary"
+                size="sm"
+                variant="outline"
+              >
+                <Link href={`/merge-requests/new?sourcePersonId=${id}`}>
+                  Request Merge
+                </Link>
               </Button>
+              {person.personCode && (
+                <button
+                  className="flex items-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5 text-xs font-mono text-primary transition-colors hover:bg-primary/10"
+                  title="Copy person code to share with relatives"
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(person.personCode!);
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 2000);
+                  }}
+                >
+                  {codeCopied ? "Copied!" : person.personCode}
+                  <span className="text-primary/60">
+                    {codeCopied ? "✓" : "⎘"}
+                  </span>
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -219,13 +306,19 @@ export default function PersonDetailPage() {
                   {person.biography && (
                     <>
                       <h2 className="font-semibold text-primary">Biography</h2>
-                      <p className="whitespace-pre-wrap leading-relaxed text-foreground">{person.biography}</p>
+                      <p className="whitespace-pre-wrap leading-relaxed text-foreground">
+                        {person.biography}
+                      </p>
                     </>
                   )}
                   {person.oralHistory && (
                     <>
-                      <h2 className="mt-4 font-semibold text-primary">Oral History & Traditions</h2>
-                      <p className="whitespace-pre-wrap italic leading-relaxed text-muted-foreground">{person.oralHistory}</p>
+                      <h2 className="mt-4 font-semibold text-primary">
+                        Oral History & Traditions
+                      </h2>
+                      <p className="whitespace-pre-wrap italic leading-relaxed text-muted-foreground">
+                        {person.oralHistory}
+                      </p>
                     </>
                   )}
                 </CardContent>
@@ -234,22 +327,34 @@ export default function PersonDetailPage() {
 
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base text-primary">Life Events</CardTitle>
-                <Button variant="link" className="h-auto p-0 text-primary" onClick={() => setShowAddEvent(true)}>
+                <CardTitle className="text-base text-primary">
+                  Life Events
+                </CardTitle>
+                <Button
+                  className="h-auto p-0 text-primary"
+                  variant="link"
+                  onClick={() => setShowAddEvent(true)}
+                >
                   + Add Event
                 </Button>
               </CardHeader>
               <CardContent>
                 {lifeEvents.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No life events recorded yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No life events recorded yet.
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {lifeEvents.map((ev) => (
                       <div key={ev.id} className="flex items-start gap-3">
-                        <span className="mt-0.5 text-xl">{EVENT_ICONS[ev.type] || "📌"}</span>
+                        <span className="mt-0.5 text-xl">
+                          {EVENT_ICONS[ev.type] || "📌"}
+                        </span>
                         <div>
                           <p className="font-medium text-foreground">
-                            {ev.title || ev.customType || ev.type.replace(/_/g, " ")}
+                            {ev.title ||
+                              ev.customType ||
+                              ev.type.replace(/_/g, " ")}
                           </p>
                           {ev.eventDate && (
                             <p className="text-xs text-muted-foreground">
@@ -258,9 +363,15 @@ export default function PersonDetailPage() {
                             </p>
                           )}
                           {ev.eventDateApprox && !ev.eventDate && (
-                            <p className="text-xs text-muted-foreground">{ev.eventDateApprox}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {ev.eventDateApprox}
+                            </p>
                           )}
-                          {ev.description && <p className="mt-1 text-sm text-muted-foreground">{ev.description}</p>}
+                          {ev.description && (
+                            <p className="mt-1 text-sm text-muted-foreground">
+                              {ev.description}
+                            </p>
+                          )}
                         </div>
                       </div>
                     ))}
@@ -273,38 +384,57 @@ export default function PersonDetailPage() {
           <div className="space-y-4">
             <Card>
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-base text-primary">Relationships</CardTitle>
-                <Button variant="link" className="h-auto p-0 text-primary" onClick={() => setShowAddRel(true)}>
+                <CardTitle className="text-base text-primary">
+                  Relationships
+                </CardTitle>
+                <Button
+                  className="h-auto p-0 text-primary"
+                  variant="link"
+                  onClick={() => setShowAddRel(true)}
+                >
                   + Add
                 </Button>
               </CardHeader>
               <CardContent>
                 {relationships.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No relationships added yet.</p>
+                  <p className="text-sm text-muted-foreground">
+                    No relationships added yet.
+                  </p>
                 ) : (
                   <div className="space-y-3">
                     {relationships.map((rel) => {
                       const other = getRelatedPerson(rel);
+
                       return (
                         <div key={rel.id} className="flex items-center gap-3">
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-primary">
-                            {other ? `${other.firstName[0]}${other.lastName[0]}` : "?"}
+                            {other
+                              ? `${other.firstName[0]}${other.lastName[0]}`
+                              : "?"}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs text-muted-foreground">{relTypeLabel(rel.type, rel)}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {relTypeLabel(rel.type, rel)}
+                            </p>
                             {other ? (
                               <Link
-                                href={`/persons/${other.id}`}
                                 className="block truncate text-sm font-medium text-foreground hover:text-primary"
+                                href={`/persons/${other.id}`}
                               >
                                 {other.firstName} {other.lastName}
                               </Link>
                             ) : (
-                              <p className="text-sm text-muted-foreground">Loading...</p>
+                              <p className="text-sm text-muted-foreground">
+                                Loading...
+                              </p>
                             )}
-                            {rel.type === "spouse" && rel.unionOrder && rel.unionOrder > 1 && (
-                              <span className="text-xs text-accent-foreground/80">Wife #{rel.unionOrder}</span>
-                            )}
+                            {rel.type === "spouse" &&
+                              rel.unionOrder &&
+                              rel.unionOrder > 1 && (
+                                <span className="text-xs text-accent-foreground/80">
+                                  Wife #{rel.unionOrder}
+                                </span>
+                              )}
                           </div>
                         </div>
                       );
@@ -314,11 +444,78 @@ export default function PersonDetailPage() {
               </CardContent>
             </Card>
 
-            <Button variant="outline" className="h-auto w-full py-4" asChild>
+            <Button asChild className="h-auto w-full py-4" variant="outline">
               <Link href={`/trees?personId=${id}`}>
-                <span className="font-medium text-primary">View in Family Tree →</span>
+                <span className="font-medium text-primary">
+                  View in Family Tree →
+                </span>
               </Link>
             </Button>
+
+            {suggestions.length > 0 && (
+              <Card className="border-amber-200 dark:border-amber-800">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                    <span>🔍</span> Possible Matches
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    These people in other trees may be the same person. Review
+                    and submit a merge request if they match.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {suggestions.map((s) => (
+                    <div
+                      key={s.person.id}
+                      className="rounded-lg border border-border bg-muted/30 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <Link
+                            className="text-sm font-medium text-foreground hover:text-primary"
+                            href={`/persons/${s.person.id}`}
+                          >
+                            {s.person.firstName} {s.person.lastName}
+                          </Link>
+                          {s.person.personCode && (
+                            <p className="font-mono text-xs text-muted-foreground">
+                              {s.person.personCode}
+                            </p>
+                          )}
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {s.reasons.map((r) => (
+                              <span
+                                key={r}
+                                className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                              >
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                          {s.score}%
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <Button
+                          asChild
+                          className="h-7 w-full text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Link
+                            href={`/merge-requests/new?sourcePersonId=${id}&targetPersonId=${s.person.id}`}
+                          >
+                            Flag as Same Person
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
@@ -349,7 +546,9 @@ export default function PersonDetailPage() {
 
 function Badge({ children }: { children: React.ReactNode }) {
   return (
-    <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">{children}</span>
+    <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+      {children}
+    </span>
   );
 }
 
@@ -385,32 +584,46 @@ function AddRelationModal({
     notes: "",
   });
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<{ id: number; firstName: string; lastName: string }[]>([]);
+  const [results, setResults] = useState<
+    { id: number; firstName: string; lastName: string }[]
+  >([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!search) {
       setResults([]);
+
       return;
     }
     const t = setTimeout(async () => {
-      const r = await fetch(`/api/persons?search=${encodeURIComponent(search)}&limit=10`);
+      const r = await fetch(
+        `/api/persons?search=${encodeURIComponent(search)}&limit=10`,
+      );
       const d = await r.json();
-      setResults((d.data?.persons || []).filter((p: { id: number }) => p.id !== personId));
+
+      setResults(
+        (d.data?.persons || []).filter(
+          (p: { id: number }) => p.id !== personId,
+        ),
+      );
     }, 300);
+
     return () => clearTimeout(t);
   }, [search, personId]);
 
   const handleSave = async () => {
     if (!form.otherPersonId || !form.type) {
       setError("Please select a person and type.");
+
       return;
     }
     setSaving(true);
     setError("");
-    const personAId = form.asPersonA === "true" ? personId : Number(form.otherPersonId);
-    const personBId = form.asPersonA === "true" ? Number(form.otherPersonId) : personId;
+    const personAId =
+      form.asPersonA === "true" ? personId : Number(form.otherPersonId);
+    const personBId =
+      form.asPersonA === "true" ? Number(form.otherPersonId) : personId;
     const res = await fetch("/api/relationships", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -425,9 +638,11 @@ function AddRelationModal({
       }),
     });
     const data = await res.json();
+
     if (!res.ok) {
       setError(data.message || "Failed to save.");
       setSaving(false);
+
       return;
     }
     onSaved();
@@ -441,28 +656,30 @@ function AddRelationModal({
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">{error}</div>
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">
+              {error}
+            </div>
           )}
 
           <div className="space-y-2">
             <Label>Search Person</Label>
             <Input
+              placeholder="Type a name..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Type a name..."
             />
             {results.length > 0 && (
               <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover">
                 {results.map((p) => (
                   <button
                     key={p.id}
+                    className="w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-accent"
                     type="button"
                     onClick={() => {
                       setForm((f) => ({ ...f, otherPersonId: String(p.id) }));
                       setSearch(`${p.firstName} ${p.lastName}`);
                       setResults([]);
                     }}
-                    className="w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-accent"
                   >
                     {p.firstName} {p.lastName}
                   </button>
@@ -473,7 +690,10 @@ function AddRelationModal({
 
           <div className="space-y-2">
             <Label>Relationship Type</Label>
-            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+            <Select
+              value={form.type}
+              onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -490,40 +710,59 @@ function AddRelationModal({
           {form.type === "parent_child" && (
             <div className="space-y-2">
               <Label>I am the...</Label>
-              <Select value={form.asPersonA} onValueChange={(v) => setForm((f) => ({ ...f, asPersonA: v }))}>
+              <Select
+                value={form.asPersonA}
+                onValueChange={(v) => setForm((f) => ({ ...f, asPersonA: v }))}
+              >
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="true">Parent (this person is the child)</SelectItem>
-                  <SelectItem value="false">Child (this person is the parent)</SelectItem>
+                  <SelectItem value="true">
+                    Parent (this person is the child)
+                  </SelectItem>
+                  <SelectItem value="false">
+                    Child (this person is the parent)
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
           )}
 
-          {["spouse", "partner", "traditional_marriage"].includes(form.type) && (
+          {["spouse", "partner", "traditional_marriage"].includes(
+            form.type,
+          ) && (
             <>
               <div className="space-y-2">
                 <Label>Marriage / Union Date</Label>
-                <Input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
+                <Input
+                  type="date"
+                  value={form.startDate}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, startDate: e.target.value }))
+                  }
+                />
               </div>
               <div className="space-y-2">
                 <Label>Ceremony Type</Label>
                 <Input
-                  value={form.ceremonyType}
-                  onChange={(e) => setForm((f) => ({ ...f, ceremonyType: e.target.value }))}
                   placeholder="e.g. Lobola, Church, Civil, Customary"
+                  value={form.ceremonyType}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, ceremonyType: e.target.value }))
+                  }
                 />
               </div>
               <div className="space-y-2">
                 <Label>Union Order (1 = first wife/husband)</Label>
                 <Input
-                  type="number"
-                  min={1}
                   max={10}
+                  min={1}
+                  type="number"
                   value={form.unionOrder}
-                  onChange={(e) => setForm((f) => ({ ...f, unionOrder: e.target.value }))}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, unionOrder: e.target.value }))
+                  }
                 />
               </div>
             </>
@@ -532,15 +771,22 @@ function AddRelationModal({
           <div className="space-y-2">
             <Label>Notes (optional)</Label>
             <Textarea
+              placeholder="Any additional details..."
               rows={2}
               value={form.notes}
-              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
-              placeholder="Any additional details..."
+              onChange={(e) =>
+                setForm((f) => ({ ...f, notes: e.target.value }))
+              }
             />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
+            <Button
+              className="flex-1"
+              disabled={saving}
+              type="button"
+              onClick={handleSave}
+            >
               {saving ? "Saving..." : "Save Relationship"}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>
@@ -600,12 +846,18 @@ function AddEventModal({
     const res = await fetch("/api/life-events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ personId, ...form, eventDate: form.eventDate || undefined }),
+      body: JSON.stringify({
+        personId,
+        ...form,
+        eventDate: form.eventDate || undefined,
+      }),
     });
     const data = await res.json();
+
     if (!res.ok) {
       setError(data.message || "Failed.");
       setSaving(false);
+
       return;
     }
     onSaved();
@@ -619,12 +871,17 @@ function AddEventModal({
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">{error}</div>
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">
+              {error}
+            </div>
           )}
 
           <div className="space-y-2">
             <Label>Event Type</Label>
-            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+            <Select
+              value={form.type}
+              onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -632,7 +889,9 @@ function AddEventModal({
                 {EVENT_TYPES.map((t) => (
                   <SelectItem key={t} value={t}>
                     {EVENT_ICONS[t] || "📌"}{" "}
-                    {t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                    {t
+                      .replace(/_/g, " ")
+                      .replace(/\b\w/g, (c) => c.toUpperCase())}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -642,52 +901,73 @@ function AddEventModal({
             <div className="space-y-2">
               <Label>Custom Type Label</Label>
               <Input
-                value={form.customType}
-                onChange={(e) => setForm((f) => ({ ...f, customType: e.target.value }))}
                 placeholder="e.g. Coronation, First Hunt"
+                value={form.customType}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, customType: e.target.value }))
+                }
               />
             </div>
           )}
           <div className="space-y-2">
             <Label>Title</Label>
             <Input
-              value={form.title}
-              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
               placeholder="Brief title..."
+              value={form.title}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, title: e.target.value }))
+              }
             />
           </div>
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input type="date" value={form.eventDate} onChange={(e) => setForm((f) => ({ ...f, eventDate: e.target.value }))} />
+            <Input
+              type="date"
+              value={form.eventDate}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, eventDate: e.target.value }))
+              }
+            />
           </div>
           <div className="space-y-2">
             <Label>Approximate Date (if exact unknown)</Label>
             <Input
-              value={form.eventDateApprox}
-              onChange={(e) => setForm((f) => ({ ...f, eventDateApprox: e.target.value }))}
               placeholder="e.g. Around 1960, Early 1970s"
+              value={form.eventDateApprox}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, eventDateApprox: e.target.value }))
+              }
             />
           </div>
           <div className="space-y-2">
             <Label>Location</Label>
             <Input
-              value={form.location}
-              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
               placeholder="Village, city..."
+              value={form.location}
+              onChange={(e) =>
+                setForm((f) => ({ ...f, location: e.target.value }))
+              }
             />
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
             <Textarea
+              placeholder="Details about this event..."
               rows={3}
               value={form.description}
-              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
-              placeholder="Details about this event..."
+              onChange={(e) =>
+                setForm((f) => ({ ...f, description: e.target.value }))
+              }
             />
           </div>
 
           <div className="flex gap-3 pt-2">
-            <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
+            <Button
+              className="flex-1"
+              disabled={saving}
+              type="button"
+              onClick={handleSave}
+            >
               {saving ? "Saving..." : "Save Event"}
             </Button>
             <Button type="button" variant="secondary" onClick={onClose}>

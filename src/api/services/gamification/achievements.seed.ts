@@ -1,4 +1,7 @@
-import { AchievementCategory, AchievementRarity } from "@/src/api/entities/Achievement";
+import {
+  AchievementCategory,
+  AchievementRarity,
+} from "@/src/api/entities/Achievement";
 
 /**
  * Master list of all achievements.
@@ -190,7 +193,8 @@ export const ACHIEVEMENT_SEEDS = [
   {
     key: "ceremony_recorder",
     name: "Ceremony Recorder",
-    description: "Record a lobola, initiation, or naming ceremony as a life event.",
+    description:
+      "Record a lobola, initiation, or naming ceremony as a life event.",
     icon: "🥁",
     category: AchievementCategory.HISTORIAN,
     rarity: AchievementRarity.UNCOMMON,
@@ -330,7 +334,8 @@ export const ACHIEVEMENT_SEEDS = [
   {
     key: "both_sides",
     name: "Both Sides Now",
-    description: "Link family members from both maternal and paternal lineages.",
+    description:
+      "Link family members from both maternal and paternal lineages.",
     icon: "⚖️",
     category: AchievementCategory.SPECIAL,
     rarity: AchievementRarity.UNCOMMON,
@@ -341,7 +346,8 @@ export const ACHIEVEMENT_SEEDS = [
   {
     key: "diaspora_mapper",
     name: "Diaspora Mapper",
-    description: "Add a family member with origin in one country who migrated to another.",
+    description:
+      "Add a family member with origin in one country who migrated to another.",
     icon: "✈️",
     category: AchievementCategory.SPECIAL,
     rarity: AchievementRarity.UNCOMMON,
@@ -363,7 +369,8 @@ export const ACHIEVEMENT_SEEDS = [
   {
     key: "four_generations",
     name: "Four Generations",
-    description: "Build a tree with at least 4 generations (great-grandparent to great-grandchild).",
+    description:
+      "Build a tree with at least 4 generations (great-grandparent to great-grandchild).",
     icon: "👴👩‍👧‍👦👶",
     category: AchievementCategory.SPECIAL,
     rarity: AchievementRarity.EPIC,
