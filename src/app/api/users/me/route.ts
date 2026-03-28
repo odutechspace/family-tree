@@ -6,6 +6,7 @@ import { Person } from "@/src/api/entities/Person";
 import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
 import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
+import { tryHashPhone } from "@/src/lib/identity";
 
 export async function GET(_req: NextRequest) {
   await initializeDataSource();
@@ -45,10 +46,11 @@ export async function PATCH(req: NextRequest) {
   if (!user) return apiError(ApiError.notFound("User not found."));
 
   const body = await req.json();
-  const { name, profilePhotoUrl, linkedPersonId } = body as {
+  const { name, profilePhotoUrl, linkedPersonId, phone } = body as {
     name?: string;
     profilePhotoUrl?: string | null;
     linkedPersonId?: number | null;
+    phone?: string;
   };
 
   if (name !== undefined) {
@@ -84,6 +86,29 @@ export async function PATCH(req: NextRequest) {
       if (!person)
         return apiError(ApiError.badRequest("That person does not exist."));
       user.linkedPersonId = pid;
+    }
+  }
+
+  // Phone: hash it, attempt auto-link to a Person record
+  if (phone !== undefined && phone !== null) {
+    const phoneHash = tryHashPhone(phone);
+
+    if (phoneHash) {
+      (user as any).phoneHash = phoneHash;
+
+      if (!user.linkedPersonId) {
+        const personRepo = AppDataSource.getRepository(Person);
+        const matchingPerson = await personRepo
+          .createQueryBuilder("person")
+          .where("person.phoneHash = :phoneHash", { phoneHash })
+          .andWhere("person.linkedUserId IS NULL")
+          .getOne();
+
+        if (matchingPerson) {
+          user.linkedPersonId = matchingPerson.id;
+          await personRepo.update(matchingPerson.id, { linkedUserId: auth.id });
+        }
+      }
     }
   }
 

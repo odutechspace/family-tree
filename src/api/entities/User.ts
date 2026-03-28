@@ -36,6 +36,14 @@ export class User {
   @Column({ type: "int", nullable: true })
   linkedPersonId: number | null;
 
+  /**
+   * HMAC-SHA256 of the user's E.164 phone number.
+   * Matched against Person.phoneHash to auto-link when a user registers
+   * or updates their phone, or when a person record is given a phone number.
+   */
+  @Column({ nullable: true })
+  phoneHash: string | null;
+
   @CreateDateColumn()
   createdAt: Date;
 

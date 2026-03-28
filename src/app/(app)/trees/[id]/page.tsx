@@ -489,9 +489,35 @@ function AddMemberModal({
   const [quickForm, setQuickForm] = useState<QuickPersonForm>({
     ...EMPTY_QUICK_FORM,
   });
+  const [codeSearch, setCodeSearch] = useState("");
+  const [codeResult, setCodeResult] = useState<Person | null>(null);
+  const [codeError, setCodeError] = useState("");
 
   const setField = (k: keyof QuickPersonForm, v: string) =>
     setQuickForm((f) => ({ ...f, [k]: v }));
+
+  const lookupByCode = async () => {
+    const code = codeSearch.trim().toUpperCase();
+
+    if (!code) return;
+    setCodeError("");
+    setCodeResult(null);
+    const r = await fetch(`/api/persons?code=${encodeURIComponent(code)}`);
+    const d = await r.json();
+    const found = d.data?.persons?.[0];
+
+    if (!found) {
+      setCodeError("No person found with that code.");
+
+      return;
+    }
+    if (existingPersonIds.includes(found.id)) {
+      setCodeError("This person is already in the tree.");
+
+      return;
+    }
+    setCodeResult(found);
+  };
 
   useEffect(() => {
     if (!search) {
@@ -606,6 +632,59 @@ function AddMemberModal({
                         <span className="text-xs text-primary">Add →</span>
                       </button>
                     ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2 border-t border-border pt-4">
+                <Label>
+                  Add by person code{" "}
+                  <span className="text-xs text-muted-foreground font-normal">
+                    (e.g. UKOO-7K3M2)
+                  </span>
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    className="font-mono text-sm"
+                    placeholder="UKOO-XXXXX"
+                    value={codeSearch}
+                    onChange={(e) => {
+                      setCodeSearch(e.target.value.toUpperCase());
+                      setCodeResult(null);
+                      setCodeError("");
+                    }}
+                    onKeyDown={(e) => e.key === "Enter" && lookupByCode()}
+                  />
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="secondary"
+                    onClick={lookupByCode}
+                  >
+                    Find
+                  </Button>
+                </div>
+                {codeError && (
+                  <p className="text-xs text-destructive">{codeError}</p>
+                )}
+                {codeResult && (
+                  <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {codeResult.firstName} {codeResult.lastName}
+                      </p>
+                      <p className="font-mono text-xs text-muted-foreground">
+                        {(codeResult as any).personCode}
+                      </p>
+                    </div>
+                    <Button
+                      disabled={saving}
+                      size="sm"
+                      type="button"
+                      onClick={() => addExistingToTree(codeResult!.id)}
+                    >
+                      Add →
+                    </Button>
                   </div>
                 )}
               </div>

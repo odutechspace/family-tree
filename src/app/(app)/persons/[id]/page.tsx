@@ -65,6 +65,24 @@ interface Person {
   originVillage?: string;
   originCountry?: string;
   isVerified: boolean;
+  personCode?: string;
+}
+
+interface SuggestedMatch {
+  person: {
+    id: number;
+    firstName: string;
+    lastName: string;
+    gender: string;
+    birthDate?: string;
+    aliveStatus: string;
+    photoUrl?: string;
+    personCode?: string;
+    tribeEthnicity?: string;
+    originCountry?: string;
+  };
+  score: number;
+  reasons: string[];
 }
 
 const EVENT_ICONS: Record<string, string> = {
@@ -95,6 +113,8 @@ export default function PersonDetailPage() {
   const [showAddRel, setShowAddRel] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [relatedPersons, setRelatedPersons] = useState<Person[]>([]);
+  const [suggestions, setSuggestions] = useState<SuggestedMatch[]>([]);
+  const [codeCopied, setCodeCopied] = useState(false);
 
   const fetchData = async () => {
     const res = await fetch(`/api/persons/${id}`);
@@ -104,6 +124,14 @@ export default function PersonDetailPage() {
       setPerson(data.data.person);
       setRelationships(data.data.relationships || []);
       setLifeEvents(data.data.lifeEvents || []);
+
+      // Load possible duplicate suggestions in the background
+      fetch(`/api/persons/suggestions?personId=${id}`)
+        .then((r) => r.json())
+        .then((d) => {
+          if (d.success) setSuggestions(d.data.suggestions || []);
+        })
+        .catch(() => {});
     }
     setLoading(false);
   };
@@ -249,6 +277,23 @@ export default function PersonDetailPage() {
                   Request Merge
                 </Link>
               </Button>
+              {person.personCode && (
+                <button
+                  className="flex items-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5 text-xs font-mono text-primary transition-colors hover:bg-primary/10"
+                  title="Copy person code to share with relatives"
+                  type="button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(person.personCode!);
+                    setCodeCopied(true);
+                    setTimeout(() => setCodeCopied(false), 2000);
+                  }}
+                >
+                  {codeCopied ? "Copied!" : person.personCode}
+                  <span className="text-primary/60">
+                    {codeCopied ? "✓" : "⎘"}
+                  </span>
+                </button>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -406,6 +451,71 @@ export default function PersonDetailPage() {
                 </span>
               </Link>
             </Button>
+
+            {suggestions.length > 0 && (
+              <Card className="border-amber-200 dark:border-amber-800">
+                <CardHeader className="pb-2">
+                  <CardTitle className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                    <span>🔍</span> Possible Matches
+                  </CardTitle>
+                  <p className="text-xs text-muted-foreground">
+                    These people in other trees may be the same person. Review
+                    and submit a merge request if they match.
+                  </p>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {suggestions.map((s) => (
+                    <div
+                      key={s.person.id}
+                      className="rounded-lg border border-border bg-muted/30 p-3"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <Link
+                            className="text-sm font-medium text-foreground hover:text-primary"
+                            href={`/persons/${s.person.id}`}
+                          >
+                            {s.person.firstName} {s.person.lastName}
+                          </Link>
+                          {s.person.personCode && (
+                            <p className="font-mono text-xs text-muted-foreground">
+                              {s.person.personCode}
+                            </p>
+                          )}
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {s.reasons.map((r) => (
+                              <span
+                                key={r}
+                                className="rounded bg-amber-100 px-1.5 py-0.5 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+                              >
+                                {r}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                        <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+                          {s.score}%
+                        </span>
+                      </div>
+                      <div className="mt-2">
+                        <Button
+                          asChild
+                          className="h-7 w-full text-xs border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400"
+                          size="sm"
+                          variant="outline"
+                        >
+                          <Link
+                            href={`/merge-requests/new?sourcePersonId=${id}&targetPersonId=${s.person.id}`}
+                          >
+                            Flag as Same Person
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>

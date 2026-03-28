@@ -2,11 +2,13 @@ import { NextRequest } from "next/server";
 
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { Person } from "@/src/api/entities/Person";
+import { User } from "@/src/api/entities/User";
 import { Relationship } from "@/src/api/entities/Relationship";
 import { LifeEvent } from "@/src/api/entities/LifeEvent";
 import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
 import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
+import { tryHashPhone } from "@/src/lib/identity";
 
 export async function GET(
   _req: NextRequest,
@@ -49,7 +51,32 @@ export async function PATCH(
   if (!person) return apiError(ApiError.notFound("Person not found."));
 
   const body = await req.json();
-  const updated = await repo.save({ ...person, ...body });
+
+  // Handle phone: hash it, never persist plaintext
+  const { phone, ...rest } = body as { phone?: string; [key: string]: unknown };
+  const phoneHash = phone ? tryHashPhone(phone) : undefined;
+
+  const updated = (await repo.save({
+    ...person,
+    ...rest,
+    ...(phoneHash !== undefined ? { phoneHash } : {}),
+    // Never allow overwriting personCode or createdByUserId via PATCH
+    personCode: person.personCode,
+    createdByUserId: person.createdByUserId,
+  } as any)) as unknown as Person;
+
+  // If a new phone was given, attempt auto-link
+  if (phoneHash && !updated.linkedUserId) {
+    const userRepo = AppDataSource.getRepository(User);
+    const matchingUser = await userRepo.findOne({ where: { phoneHash } });
+
+    if (matchingUser) {
+      await repo.update(updated.id, { linkedUserId: matchingUser.id });
+      if (!matchingUser.linkedPersonId) {
+        await userRepo.update(matchingUser.id, { linkedPersonId: updated.id });
+      }
+    }
+  }
 
   return apiSuccess({ person: updated }, "Person updated");
 }
