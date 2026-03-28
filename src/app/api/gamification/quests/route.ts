@@ -16,7 +16,7 @@ function getWeekStart(): string {
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) return apiError(ApiError.unauthorized("Authentication required."));
 
   const questRepo = AppDataSource.getRepository(Quest);

@@ -10,7 +10,7 @@ import { validatePassword } from "@/src/api/services/user.service";
 
 export async function POST(req: NextRequest) {
   await initializeDataSource();
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) return apiError(ApiError.unauthorized("Authentication required."));
 
   const body = await req.json();

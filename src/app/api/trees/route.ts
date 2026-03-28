@@ -11,7 +11,7 @@ import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   const repo = AppDataSource.getRepository(FamilyTree);
   const { searchParams } = new URL(req.url);
   const mine = searchParams.get("mine");
@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   await initializeDataSource();
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return apiError(ApiError.unauthorized("Authentication required."));
 
   const body = await req.json();

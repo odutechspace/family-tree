@@ -2,31 +2,80 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+  Ukoo brand palette (from public/logos):
+  Teal: #49838F, #215563 | Gold/sand: #CDB185, #BB885E, #D0B287 | Deep neutrals: #261516, #332429, #3A2F32
+*/
 
-:root {
-    --background-default: #ffffff;
-    --background-secondary: #a3b9cc;
-    --background-tertiary: #5c7d99;
-    --background-light: #ffffff;
-    --background-transluscent: rgba(255, 255, 255, 0.8);
+@layer base {
+  :root {
+    --background: 40 28% 97%;
+    --foreground: 345 28% 14%;
 
-    --text-light: #ffffff;
-    --text-dark: #000;
+    --card: 40 25% 99%;
+    --card-foreground: 345 28% 14%;
 
-    --grey: #E4E4E6;
+    --popover: 40 25% 99%;
+    --popover-foreground: 345 28% 14%;
 
-    --primary: #203D3B;
-    --primary-dark: #0D0F0F;
-    --primary-light: #fff;
+    --primary: 192 33% 40%;
+    --primary-foreground: 40 30% 98%;
 
+    --secondary: 192 35% 92%;
+    --secondary-foreground: 192 44% 22%;
 
-    --secondary: #BF8F73;
-    --secondary-dark: #484645;
+    --muted: 40 18% 92%;
+    --muted-foreground: 345 12% 38%;
 
-    --border-radius-default: 10px;
+    --accent: 38 42% 58%;
+    --accent-foreground: 345 28% 14%;
 
-    /* Shadows */
-    --background-tertiary-shadow: 0 4px 15px rgba(92, 125, 153, 0.5);
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 40 30% 98%;
 
-    --font-family: 'poppins-regular'
+    --border: 38 18% 86%;
+    --input: 38 18% 86%;
+    --ring: 192 33% 40%;
+
+    --radius: 0.625rem;
+  }
+
+  .dark {
+    --background: 355 26% 9%;
+    --foreground: 40 18% 94%;
+
+    --card: 357 24% 12%;
+    --card-foreground: 40 18% 94%;
+
+    --popover: 357 24% 12%;
+    --popover-foreground: 40 18% 94%;
+
+    --primary: 192 33% 46%;
+    --primary-foreground: 40 25% 98%;
+
+    --secondary: 192 40% 22%;
+    --secondary-foreground: 40 20% 96%;
+
+    --muted: 345 14% 18%;
+    --muted-foreground: 40 12% 62%;
+
+    --accent: 38 38% 58%;
+    --accent-foreground: 357 24% 10%;
+
+    --destructive: 0 55% 42%;
+    --destructive-foreground: 40 30% 98%;
+
+    --border: 345 14% 22%;
+    --input: 345 14% 22%;
+    --ring: 192 33% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+  }
 }

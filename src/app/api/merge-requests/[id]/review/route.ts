@@ -12,7 +12,7 @@ import { awardXP } from "@/src/api/services/gamification/gamification.service";
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await initializeDataSource();
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user || user.role !== "admin") return apiError(ApiError.forbidden("Admin access required."));
 
   const { id } = await params;

@@ -10,7 +10,7 @@ import { ACHIEVEMENT_SEEDS } from "@/src/api/services/gamification/achievements.
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth) return apiError(ApiError.unauthorized("Authentication required."));
 
   const achRepo = AppDataSource.getRepository(Achievement);

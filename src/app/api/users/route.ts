@@ -8,7 +8,7 @@ import { getAuthUser } from "@/src/lib/auth";
 // Admin only — list all users
 export async function GET(req: NextRequest) {
   await initializeDataSource();
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth || auth.role !== "admin") return apiError(ApiError.forbidden("Admin access required."));
 
   const repo = AppDataSource.getRepository(User);
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
 // Admin only — update user role
 export async function PATCH(req: NextRequest) {
   await initializeDataSource();
-  const auth = getAuthUser(req);
+  const auth = await getAuthUser(req);
   if (!auth || auth.role !== "admin") return apiError(ApiError.forbidden("Admin access required."));
 
   const body = await req.json();

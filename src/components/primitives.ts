@@ -4,6 +4,7 @@ export const title = tv({
   base: "tracking-tight inline font-semibold",
   variants: {
     color: {
+      ukoo: "from-[#49838F] to-[#CDB185]",
       violet: "from-[#FF1CF7] to-[#b249f8]",
       yellow: "from-[#FF705B] to-[#FFB457]",
       blue: "from-[#5EA2EF] to-[#0072F5]",
@@ -26,22 +27,14 @@ export const title = tv({
   },
   compoundVariants: [
     {
-      color: [
-        "violet",
-        "yellow",
-        "blue",
-        "cyan",
-        "green",
-        "pink",
-        "foreground",
-      ],
+      color: ["ukoo", "violet", "yellow", "blue", "cyan", "green", "pink", "foreground"],
       class: "bg-clip-text text-transparent bg-gradient-to-b",
     },
   ],
 });
 
 export const subtitle = tv({
-  base: "w-full md:w-1/2 my-2 text-lg lg:text-xl text-default-600 block max-w-full",
+  base: "w-full md:w-1/2 my-2 text-lg lg:text-xl text-muted-foreground block max-w-full",
   variants: {
     fullWidth: {
       true: "!w-full",

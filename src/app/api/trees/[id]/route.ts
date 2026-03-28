@@ -43,7 +43,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await initializeDataSource();
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return apiError(ApiError.unauthorized("Authentication required."));
 
   const { id } = await params;
@@ -59,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   await initializeDataSource();
-  const user = getAuthUser(req);
+  const user = await getAuthUser(req);
   if (!user) return apiError(ApiError.unauthorized("Authentication required."));
 
   const { id } = await params;

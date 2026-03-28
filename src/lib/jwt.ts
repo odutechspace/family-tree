@@ -1,11 +1,23 @@
-import jwt from "jsonwebtoken";
+import * as jose from "jose";
 
-const SECRET_KEY = process.env.JWT_SECRET || "your-secret-key";
+function getSecretKey(): Uint8Array {
+  return new TextEncoder().encode(process.env.JWT_SECRET || "your-secret-key");
+}
 
-export const generateToken = (userId: number, role?: string) => {
-  return jwt.sign({ id: userId, role: role || "user" }, SECRET_KEY, { expiresIn: "24h" });
-};
+export async function generateToken(userId: number, role?: string): Promise<string> {
+  return await new jose.SignJWT({
+    id: userId,
+    role: role || "user",
+  })
+    .setProtectedHeader({ alg: "HS256" })
+    .setIssuedAt()
+    .setExpirationTime("24h")
+    .sign(getSecretKey());
+}
 
-export const verifyToken = (token: string) => {
-  return jwt.verify(token, SECRET_KEY);
-};
+export async function verifyToken(token: string): Promise<jose.JWTPayload> {
+  const { payload } = await jose.jwtVerify(token, getSecretKey(), {
+    algorithms: ["HS256"],
+  });
+  return payload;
+}

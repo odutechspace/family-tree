@@ -4,6 +4,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 import { Logo } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
 
 function LoginForm() {
   const router = useRouter();
@@ -37,64 +41,67 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black px-4">
+    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-secondary/30 via-background to-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-4">
             <Logo priority variant="wordmark" />
           </Link>
-          <p className="text-stone-400">Sign in to your family tree</p>
+          <p className="text-muted-foreground">Sign in to your family tree</p>
         </div>
-        <div className="bg-stone-800/80 backdrop-blur border border-stone-700 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-semibold text-white mb-6">Welcome Back</h2>
-          {justRegistered && (
-            <div className="mb-4 p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg text-emerald-200 text-sm">
-              Account created. Sign in with your email and password.
-            </div>
-          )}
-          {error && (
-            <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
-              {error}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-stone-300 text-sm font-medium mb-2">Email</label>
-              <input
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <label className="block text-stone-300 text-sm font-medium mb-2">Password</label>
-              <input
-                type="password"
-                required
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white font-semibold rounded-lg transition focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              {loading ? "Signing in..." : "Sign In"}
-            </button>
-          </form>
-          <p className="mt-6 text-center text-stone-400 text-sm">
-            No account?{" "}
-            <Link href="/auth/register" className="text-amber-400 hover:text-amber-300 font-medium">
-              Register here
-            </Link>
-          </p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome back</CardTitle>
+            <CardDescription>Enter your email and password to continue.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {justRegistered && (
+              <div className="mb-4 p-3 rounded-md border border-primary/30 bg-primary/10 text-sm text-foreground">
+                Account created. Sign in with your email and password.
+              </div>
+            )}
+            {error && (
+              <div className="mb-4 p-3 rounded-md border border-destructive/50 bg-destructive/10 text-destructive text-sm">
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder="••••••••"
+                  autoComplete="current-password"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Signing in…" : "Sign in"}
+              </Button>
+            </form>
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              No account?{" "}
+              <Link href="/auth/register" className="text-primary font-medium hover:underline">
+                Register here
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
@@ -104,7 +111,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black text-stone-400">
+        <div className="min-h-[100vh] flex items-center justify-center bg-background text-muted-foreground">
           Loading…
         </div>
       }

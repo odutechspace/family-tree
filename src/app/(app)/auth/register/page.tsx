@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { Logo } from "@/src/components/icons";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -39,82 +43,87 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black px-4">
+    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-secondary/30 via-background to-background px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-block mb-4">
             <Logo priority variant="wordmark" />
           </Link>
-          <p className="text-stone-400">Start building your family legacy</p>
+          <p className="text-muted-foreground">Start building your family legacy</p>
         </div>
-        <div className="bg-stone-800/80 backdrop-blur border border-stone-700 rounded-2xl p-8 shadow-2xl">
-          <h2 className="text-2xl font-semibold text-white mb-6">Create Account</h2>
-          {error && (
-            <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
-              {error}
-            </div>
-          )}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div>
-              <label className="block text-stone-300 text-sm font-medium mb-2">Full Name</label>
-              <input
-                type="text"
-                required
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                placeholder="Amara Osei"
-              />
-            </div>
-            <div>
-              <label className="block text-stone-300 text-sm font-medium mb-2">Email</label>
-              <input
-                type="email"
-                required
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                placeholder="you@example.com"
-              />
-            </div>
-            <div>
-              <label className="block text-stone-300 text-sm font-medium mb-2">Password</label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={form.password}
-                onChange={(e) => setForm({ ...form, password: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                placeholder="Min. 8 characters"
-              />
-            </div>
-            <div>
-              <label className="block text-stone-300 text-sm font-medium mb-2">Confirm Password</label>
-              <input
-                type="password"
-                required
-                value={form.confirmPassword}
-                onChange={(e) => setForm({ ...form, confirmPassword: e.target.value })}
-                className="w-full px-4 py-3 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-400 focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500 transition"
-                placeholder="••••••••"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white font-semibold rounded-lg transition focus:outline-none focus:ring-2 focus:ring-amber-400"
-            >
-              {loading ? "Creating account..." : "Create Account"}
-            </button>
-          </form>
-          <p className="mt-6 text-center text-stone-400 text-sm">
-            Already have an account?{" "}
-            <Link href="/auth/login" className="text-amber-400 hover:text-amber-300 font-medium">
-              Sign in
-            </Link>
-          </p>
-        </div>
+        <Card>
+          <CardHeader>
+            <CardTitle>Create account</CardTitle>
+            <CardDescription>Join My Ukoo to preserve your family story.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {error && (
+              <div className="mb-4 p-3 rounded-md border border-destructive/50 bg-destructive/10 text-destructive text-sm">
+                {error}
+              </div>
+            )}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Full name</Label>
+                <Input
+                  id="name"
+                  type="text"
+                  required
+                  value={form.name}
+                  onChange={e => setForm({ ...form, name: e.target.value })}
+                  placeholder="Amara Osei"
+                  autoComplete="name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  required
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="you@example.com"
+                  autoComplete="email"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={8}
+                  value={form.password}
+                  onChange={e => setForm({ ...form, password: e.target.value })}
+                  placeholder="Min. 8 characters"
+                  autoComplete="new-password"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm">Confirm password</Label>
+                <Input
+                  id="confirm"
+                  type="password"
+                  required
+                  value={form.confirmPassword}
+                  onChange={e => setForm({ ...form, confirmPassword: e.target.value })}
+                  placeholder="••••••••"
+                  autoComplete="new-password"
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={loading}>
+                {loading ? "Creating account…" : "Create account"}
+              </Button>
+            </form>
+            <p className="mt-6 text-center text-sm text-muted-foreground">
+              Already have an account?{" "}
+              <Link href="/auth/login" className="text-primary font-medium hover:underline">
+                Sign in
+              </Link>
+            </p>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
