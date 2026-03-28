@@ -34,18 +34,23 @@ export const LEVEL_NAMES = [
 
 export function calcLevel(xp: number): number {
   let level = 1;
+
   for (let i = LEVEL_THRESHOLDS.length - 1; i >= 0; i--) {
     if (xp >= LEVEL_THRESHOLDS[i]) {
       level = i + 1;
       break;
     }
   }
+
   return Math.min(level, LEVEL_THRESHOLDS.length);
 }
 
 export function xpForNextLevel(level: number): number {
   const next = level; // index is level-1+1 = level
-  return LEVEL_THRESHOLDS[next] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+
+  return (
+    LEVEL_THRESHOLDS[next] ?? LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1]
+  );
 }
 
 @Entity()

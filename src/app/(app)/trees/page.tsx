@@ -24,6 +24,7 @@ export default function TreesPage() {
     const url = which === "mine" ? "/api/trees?mine=1" : "/api/trees";
     const res = await fetch(url);
     const data = await res.json();
+
     setTrees(data.data?.trees || []);
     setLoading(false);
   };
@@ -38,7 +39,9 @@ export default function TreesPage() {
         <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">Family Trees</h1>
-            <p className="mt-1 text-muted-foreground">Visualize and manage your family lineages</p>
+            <p className="mt-1 text-muted-foreground">
+              Visualize and manage your family lineages
+            </p>
           </div>
           <Button asChild size="lg">
             <Link href="/trees/new">+ New Tree</Link>
@@ -46,10 +49,20 @@ export default function TreesPage() {
         </div>
 
         <div className="mb-6 flex gap-2">
-          <Button type="button" variant={tab === "mine" ? "default" : "secondary"} size="sm" onClick={() => setTab("mine")}>
+          <Button
+            size="sm"
+            type="button"
+            variant={tab === "mine" ? "default" : "secondary"}
+            onClick={() => setTab("mine")}
+          >
             My Trees
           </Button>
-          <Button type="button" variant={tab === "public" ? "default" : "secondary"} size="sm" onClick={() => setTab("public")}>
+          <Button
+            size="sm"
+            type="button"
+            variant={tab === "public" ? "default" : "secondary"}
+            onClick={() => setTab("public")}
+          >
             Public Trees
           </Button>
         </div>
@@ -63,19 +76,27 @@ export default function TreesPage() {
         ) : trees.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground">
             <p className="mb-4 text-5xl">🌳</p>
-            <p className="mb-2 text-lg">{tab === "mine" ? "You have no trees yet" : "No public trees yet"}</p>
-            <Button variant="link" asChild className="text-primary">
+            <p className="mb-2 text-lg">
+              {tab === "mine" ? "You have no trees yet" : "No public trees yet"}
+            </p>
+            <Button asChild className="text-primary" variant="link">
               <Link href="/trees/new">Create your first family tree →</Link>
             </Button>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {trees.map((tree) => (
-              <Link key={tree.id} href={`/trees/${tree.id}`} className="group block">
+              <Link
+                key={tree.id}
+                className="group block"
+                href={`/trees/${tree.id}`}
+              >
                 <Card className="h-full border-border transition-colors hover:border-primary/40">
                   <CardContent className="flex flex-col gap-3 p-5">
                     <div className="flex items-start justify-between">
-                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">🌳</div>
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">
+                        🌳
+                      </div>
                       <span
                         className={`rounded-full px-2 py-0.5 text-xs ${
                           tree.visibility === "public"
@@ -89,12 +110,18 @@ export default function TreesPage() {
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-foreground transition-colors group-hover:text-primary">{tree.name}</h3>
+                      <h3 className="font-semibold text-foreground transition-colors group-hover:text-primary">
+                        {tree.name}
+                      </h3>
                       {tree.description && (
-                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{tree.description}</p>
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                          {tree.description}
+                        </p>
                       )}
                     </div>
-                    <p className="mt-auto text-xs text-muted-foreground">{new Date(tree.createdAt).toLocaleDateString()}</p>
+                    <p className="mt-auto text-xs text-muted-foreground">
+                      {new Date(tree.createdAt).toLocaleDateString()}
+                    </p>
                   </CardContent>
                 </Card>
               </Link>

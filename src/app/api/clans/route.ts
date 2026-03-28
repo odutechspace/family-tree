@@ -15,16 +15,22 @@ export async function GET(req: NextRequest) {
   const search = searchParams.get("search") || "";
 
   const qb = repo.createQueryBuilder("clan");
+
   if (search) {
-    qb.where("clan.name LIKE :s OR clan.totem LIKE :s OR clan.ethnicGroup LIKE :s", { s: `%${search}%` });
+    qb.where(
+      "clan.name LIKE :s OR clan.totem LIKE :s OR clan.ethnicGroup LIKE :s",
+      { s: `%${search}%` },
+    );
   }
   const clans = await qb.orderBy("clan.name", "ASC").getMany();
+
   return apiSuccess({ clans }, "Clans retrieved");
 }
 
 export async function POST(req: NextRequest) {
   await initializeDataSource();
   const user = await getAuthUser(req);
+
   if (!user) return apiError(ApiError.unauthorized("Authentication required."));
 
   const body = await req.json();
@@ -32,7 +38,12 @@ export async function POST(req: NextRequest) {
   const clan = repo.create({ ...body, createdByUserId: user.id });
   const saved = await repo.save(clan);
 
-  const gamification = await awardXP(user.id, XPEventType.CREATE_CLAN, (saved as any).id, `Created clan: ${body.name}`);
+  const gamification = await awardXP(
+    user.id,
+    XPEventType.CREATE_CLAN,
+    (saved as any).id,
+    `Created clan: ${body.name}`,
+  );
 
   return apiSuccess({ clan: saved, gamification }, "Clan created", 201);
 }

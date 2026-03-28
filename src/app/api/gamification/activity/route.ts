@@ -9,6 +9,7 @@ import { getAuthUser } from "@/src/lib/auth";
 export async function GET(req: NextRequest) {
   await initializeDataSource();
   const auth = await getAuthUser(req);
+
   if (!auth) return apiError(ApiError.unauthorized("Authentication required."));
 
   const repo = AppDataSource.getRepository(XPEvent);

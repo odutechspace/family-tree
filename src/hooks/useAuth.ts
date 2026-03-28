@@ -19,8 +19,10 @@ export function useAuth() {
   const fetchUser = useCallback(async () => {
     try {
       const res = await fetch("/api/users/me");
+
       if (res.ok) {
         const data = await res.json();
+
         setUser(data.data?.user || null);
       } else {
         setUser(null);

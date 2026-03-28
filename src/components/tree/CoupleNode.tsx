@@ -11,8 +11,18 @@ export interface CoupleNodeData {
 function CoupleNode({ data }: NodeProps<CoupleNodeData>) {
   return (
     <div className="relative flex items-center justify-center">
-      <Handle type="target" position={Position.Left} id="left" className="!h-2 !w-2 !bg-primary" />
-      <Handle type="target" position={Position.Right} id="right" className="!h-2 !w-2 !bg-primary" />
+      <Handle
+        className="!h-2 !w-2 !bg-primary"
+        id="left"
+        position={Position.Left}
+        type="target"
+      />
+      <Handle
+        className="!h-2 !w-2 !bg-primary"
+        id="right"
+        position={Position.Right}
+        type="target"
+      />
 
       <div
         className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-lg"
@@ -21,7 +31,11 @@ function CoupleNode({ data }: NodeProps<CoupleNodeData>) {
         <span className="text-xs">💍</span>
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!h-2 !w-2 !bg-primary" />
+      <Handle
+        className="!h-2 !w-2 !bg-primary"
+        position={Position.Bottom}
+        type="source"
+      />
     </div>
   );
 }

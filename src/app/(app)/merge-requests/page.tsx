@@ -26,7 +26,8 @@ const STATUS_STYLES: Record<string, string> = {
     "border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
   approved:
     "border-emerald-200 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400",
-  rejected: "border-red-200 bg-red-100 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400",
+  rejected:
+    "border-red-200 bg-red-100 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400",
   cancelled: "border-border bg-muted text-muted-foreground",
 };
 
@@ -42,6 +43,7 @@ export default function MergeRequestsPage() {
     const url = `/api/merge-requests${isAdmin ? "?all=1" : ""}`;
     const res = await fetch(url);
     const data = await res.json();
+
     setRequests(data.data?.requests || []);
     setLoading(false);
   };
@@ -50,7 +52,10 @@ export default function MergeRequestsPage() {
     if (user !== undefined) fetchRequests();
   }, [user]);
 
-  const filtered = statusFilter === "all" ? requests : requests.filter((r) => r.status === statusFilter);
+  const filtered =
+    statusFilter === "all"
+      ? requests
+      : requests.filter((r) => r.status === statusFilter);
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
@@ -58,7 +63,9 @@ export default function MergeRequestsPage() {
         <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <h1 className="text-3xl font-bold text-primary">Merge Requests</h1>
-            <p className="mt-1 text-muted-foreground">Propose and manage family history merges</p>
+            <p className="mt-1 text-muted-foreground">
+              Propose and manage family history merges
+            </p>
           </div>
           <Button asChild size="lg">
             <Link href="/merge-requests/new">+ New Merge Request</Link>
@@ -69,10 +76,10 @@ export default function MergeRequestsPage() {
           {["all", "pending", "approved", "rejected"].map((s) => (
             <Button
               key={s}
+              className="capitalize"
+              size="sm"
               type="button"
               variant={statusFilter === s ? "default" : "secondary"}
-              size="sm"
-              className="capitalize"
               onClick={() => setStatusFilter(s)}
             >
               {s}
@@ -90,7 +97,7 @@ export default function MergeRequestsPage() {
           <div className="py-16 text-center text-muted-foreground">
             <p className="mb-3 text-4xl">🔗</p>
             <p className="mb-2 text-lg">No merge requests found</p>
-            <Button variant="link" asChild className="text-primary">
+            <Button asChild className="text-primary" variant="link">
               <Link href="/merge-requests/new">Create one →</Link>
             </Button>
           </div>
@@ -108,27 +115,40 @@ export default function MergeRequestsPage() {
                           {mr.status}
                         </span>
                         <span className="text-xs text-muted-foreground">
-                          {mr.type === "duplicate_person" ? "👤 Duplicate Person" : "🌳 Family Trees"}
+                          {mr.type === "duplicate_person"
+                            ? "👤 Duplicate Person"
+                            : "🌳 Family Trees"}
                         </span>
                       </div>
 
                       {mr.type === "duplicate_person" && (
                         <p className="text-sm text-foreground">
-                          Merge Person #{mr.sourcePersonId} into Person #{mr.targetPersonId}
+                          Merge Person #{mr.sourcePersonId} into Person #
+                          {mr.targetPersonId}
                         </p>
                       )}
                       {mr.type === "family_trees" && (
                         <p className="text-sm text-foreground">
-                          Merge Tree #{mr.sourceTreeId} into Tree #{mr.targetTreeId}
+                          Merge Tree #{mr.sourceTreeId} into Tree #
+                          {mr.targetTreeId}
                         </p>
                       )}
 
-                      {mr.reason && <p className="mt-1 text-sm italic text-muted-foreground">&quot;{mr.reason}&quot;</p>}
-                      <p className="mt-2 text-xs text-muted-foreground">{new Date(mr.createdAt).toLocaleDateString()}</p>
+                      {mr.reason && (
+                        <p className="mt-1 text-sm italic text-muted-foreground">
+                          &quot;{mr.reason}&quot;
+                        </p>
+                      )}
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {new Date(mr.createdAt).toLocaleDateString()}
+                      </p>
                     </div>
 
                     {user?.role === "admin" && mr.status === "pending" && (
-                      <ReviewButtons mergeRequestId={mr.id} onReviewed={fetchRequests} />
+                      <ReviewButtons
+                        mergeRequestId={mr.id}
+                        onReviewed={fetchRequests}
+                      />
                     )}
                   </div>
                 </CardContent>
@@ -141,11 +161,19 @@ export default function MergeRequestsPage() {
   );
 }
 
-function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number; onReviewed: () => void }) {
+function ReviewButtons({
+  mergeRequestId,
+  onReviewed,
+}: {
+  mergeRequestId: number;
+  onReviewed: () => void;
+}) {
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
-  const [pendingDecision, setPendingDecision] = useState<"approved" | "rejected" | null>(null);
+  const [pendingDecision, setPendingDecision] = useState<
+    "approved" | "rejected" | null
+  >(null);
 
   const submit = async (decision: "approved" | "rejected") => {
     setLoading(true);
@@ -163,24 +191,30 @@ function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number;
     return (
       <div className="flex min-w-48 flex-col gap-2">
         <Textarea
+          className="text-xs"
+          placeholder="Review notes (optional)..."
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
-          placeholder="Review notes (optional)..."
-          className="text-xs"
         />
         <div className="flex gap-2">
           <Button
-            type="button"
-            size="sm"
-            variant={pendingDecision === "approved" ? "default" : "destructive"}
             className="flex-1 text-xs"
-            onClick={() => submit(pendingDecision!)}
             disabled={loading}
+            size="sm"
+            type="button"
+            variant={pendingDecision === "approved" ? "default" : "destructive"}
+            onClick={() => submit(pendingDecision!)}
           >
             Confirm {pendingDecision}
           </Button>
-          <Button type="button" size="sm" variant="secondary" className="text-xs" onClick={() => setShowNotes(false)}>
+          <Button
+            className="text-xs"
+            size="sm"
+            type="button"
+            variant="secondary"
+            onClick={() => setShowNotes(false)}
+          >
             Cancel
           </Button>
         </div>
@@ -191,9 +225,9 @@ function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number;
   return (
     <div className="flex flex-col gap-2">
       <Button
-        type="button"
-        size="sm"
         className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-800 dark:hover:bg-emerald-700"
+        size="sm"
+        type="button"
         onClick={() => {
           setPendingDecision("approved");
           setShowNotes(true);
@@ -201,10 +235,15 @@ function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number;
       >
         ✓ Approve
       </Button>
-      <Button type="button" size="sm" variant="destructive" onClick={() => {
-        setPendingDecision("rejected");
-        setShowNotes(true);
-      }}>
+      <Button
+        size="sm"
+        type="button"
+        variant="destructive"
+        onClick={() => {
+          setPendingDecision("rejected");
+          setShowNotes(true);
+        }}
+      >
         ✗ Reject
       </Button>
     </div>

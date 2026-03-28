@@ -1,6 +1,9 @@
 "use client";
 
-const RARITY_STYLES: Record<string, { border: string; bg: string; glow: string; label: string }> = {
+const RARITY_STYLES: Record<
+  string,
+  { border: string; bg: string; glow: string; label: string }
+> = {
   common: {
     border: "border-border",
     bg: "bg-muted",
@@ -77,18 +80,30 @@ export default function AchievementBadge({
       </div>
       {size !== "sm" && (
         <div className="text-center">
-          <p className={`text-sm font-semibold ${isUnlocked ? "text-foreground" : "text-muted-foreground"}`}>{name}</p>
+          <p
+            className={`text-sm font-semibold ${isUnlocked ? "text-foreground" : "text-muted-foreground"}`}
+          >
+            {name}
+          </p>
           {size === "lg" && (
-            <p className="mt-0.5 max-w-28 text-xs leading-snug text-muted-foreground">{description}</p>
+            <p className="mt-0.5 max-w-28 text-xs leading-snug text-muted-foreground">
+              {description}
+            </p>
           )}
           <div className="mt-1 flex items-center justify-center gap-1">
-            <span className={`text-xs capitalize ${style.label}`}>{rarity}</span>
+            <span className={`text-xs capitalize ${style.label}`}>
+              {rarity}
+            </span>
             {xpReward > 0 && (
-              <span className="text-xs font-medium text-amber-600 dark:text-amber-500">+{xpReward} XP</span>
+              <span className="text-xs font-medium text-amber-600 dark:text-amber-500">
+                +{xpReward} XP
+              </span>
             )}
           </div>
           {isUnlocked && unlockedAt && (
-            <p className="text-xs text-muted-foreground">{new Date(unlockedAt).toLocaleDateString()}</p>
+            <p className="text-xs text-muted-foreground">
+              {new Date(unlockedAt).toLocaleDateString()}
+            </p>
           )}
         </div>
       )}

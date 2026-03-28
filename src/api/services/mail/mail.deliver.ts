@@ -13,7 +13,11 @@ const transporter = nodemailer.createTransport({
 /**
  * Sends email via SMTP. Used only by the BullMQ mail worker — not from API request handlers.
  */
-export async function deliverMail(to: string, subject: string, htmlContent: string): Promise<void> {
+export async function deliverMail(
+  to: string,
+  subject: string,
+  htmlContent: string,
+): Promise<void> {
   const mailOptions = {
     from: `My Ukoo <${process.env.MAIL_FROM || "no-reply@myukoo.com"}>`,
     to,

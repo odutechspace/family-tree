@@ -30,7 +30,11 @@ export class FamilyTreeMember {
   @Column({ nullable: true })
   userId: number;
 
-  @Column({ type: "enum", enum: TreeMemberRole, default: TreeMemberRole.VIEWER })
+  @Column({
+    type: "enum",
+    enum: TreeMemberRole,
+    default: TreeMemberRole.VIEWER,
+  })
   role: TreeMemberRole;
 
   @Column({ default: false })

@@ -20,6 +20,8 @@ export function absolutePublicUrl(path: string): string {
   const base =
     process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, "") ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "");
+
   if (!base) return "";
+
   return `${base}${path.startsWith("/") ? path : `/${path}`}`;
 }

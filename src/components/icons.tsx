@@ -1,8 +1,9 @@
 import * as React from "react";
 import Image from "next/image";
 
-import { LOGOS } from "@/src/config/logos";
 import { IconSvgProps } from "../types";
+
+import { LOGOS } from "@/src/config/logos";
 
 type LogoProps = {
   size?: number;
@@ -25,10 +26,14 @@ export const Logo: React.FC<LogoProps> = ({
   if (variant === "wordmark") {
     const h = height ?? 52;
     const w = width ?? 220;
+
     return (
       <Image
         alt="My Ukoo"
-        className={className ?? "mx-auto h-[52px] w-auto max-w-[240px] object-contain object-center"}
+        className={
+          className ??
+          "mx-auto h-[52px] w-auto max-w-[240px] object-contain object-center"
+        }
         height={h}
         priority={priority}
         src={LOGOS.wordmark}
@@ -38,6 +43,7 @@ export const Logo: React.FC<LogoProps> = ({
   }
   const src = variant === "onDark" ? LOGOS.iconOnDark : LOGOS.icon;
   const s = size;
+
   return (
     <Image
       alt="My Ukoo"

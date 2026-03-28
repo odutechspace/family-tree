@@ -4,7 +4,12 @@ import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import {
@@ -35,36 +40,38 @@ export default function EditPersonPage() {
   const [form, setForm] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    Promise.all([fetch(`/api/persons/${id}`).then((r) => r.json()), fetch("/api/clans").then((r) => r.json())]).then(
-      ([personData, clanData]) => {
-        const p = personData.data?.person;
-        if (p) {
-          setForm({
-            firstName: p.firstName || "",
-            middleName: p.middleName || "",
-            lastName: p.lastName || "",
-            maidenName: p.maidenName || "",
-            nickname: p.nickname || "",
-            gender: p.gender || "unknown",
-            birthDate: p.birthDate ? p.birthDate.split("T")[0] : "",
-            birthPlace: p.birthPlace || "",
-            aliveStatus: p.aliveStatus || "unknown",
-            deathDate: p.deathDate ? p.deathDate.split("T")[0] : "",
-            deathPlace: p.deathPlace || "",
-            photoUrl: p.photoUrl || "",
-            biography: p.biography || "",
-            oralHistory: p.oralHistory || "",
-            clanId: p.clanId ? String(p.clanId) : "",
-            tribeEthnicity: p.tribeEthnicity || "",
-            totem: p.totem || "",
-            originVillage: p.originVillage || "",
-            originCountry: p.originCountry || "",
-          });
-        }
-        setClans(clanData.data?.clans || []);
-        setLoading(false);
-      },
-    );
+    Promise.all([
+      fetch(`/api/persons/${id}`).then((r) => r.json()),
+      fetch("/api/clans").then((r) => r.json()),
+    ]).then(([personData, clanData]) => {
+      const p = personData.data?.person;
+
+      if (p) {
+        setForm({
+          firstName: p.firstName || "",
+          middleName: p.middleName || "",
+          lastName: p.lastName || "",
+          maidenName: p.maidenName || "",
+          nickname: p.nickname || "",
+          gender: p.gender || "unknown",
+          birthDate: p.birthDate ? p.birthDate.split("T")[0] : "",
+          birthPlace: p.birthPlace || "",
+          aliveStatus: p.aliveStatus || "unknown",
+          deathDate: p.deathDate ? p.deathDate.split("T")[0] : "",
+          deathPlace: p.deathPlace || "",
+          photoUrl: p.photoUrl || "",
+          biography: p.biography || "",
+          oralHistory: p.oralHistory || "",
+          clanId: p.clanId ? String(p.clanId) : "",
+          tribeEthnicity: p.tribeEthnicity || "",
+          totem: p.totem || "",
+          originVillage: p.originVillage || "",
+          originCountry: p.originCountry || "",
+        });
+      }
+      setClans(clanData.data?.clans || []);
+      setLoading(false);
+    });
   }, [id]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -75,6 +82,7 @@ export default function EditPersonPage() {
     setError("");
     try {
       const body: Record<string, unknown> = { ...form };
+
       if (!body.clanId) delete body.clanId;
       if (!body.birthDate) delete body.birthDate;
       if (!body.deathDate) delete body.deathDate;
@@ -85,8 +93,10 @@ export default function EditPersonPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
+
       if (!res.ok) {
         setError(data.message || "Failed to update.");
+
         return;
       }
       router.push(`/persons/${id}`);
@@ -99,7 +109,9 @@ export default function EditPersonPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Loading...</div>
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+        Loading...
+      </div>
     );
   }
 
@@ -107,28 +119,55 @@ export default function EditPersonPage() {
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-2xl">
         <div className="mb-8 flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
+          <Button asChild size="sm" variant="ghost">
             <Link href={`/persons/${id}`}>← Back</Link>
           </Button>
           <h1 className="text-2xl font-bold text-primary">Edit Person</h1>
         </div>
         {error && (
-          <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</div>
+          <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            {error}
+          </div>
         )}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form className="space-y-6" onSubmit={handleSubmit}>
           <Card>
             <CardHeader>
               <CardTitle className="text-primary">Basic Information</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
-              <Field label="First Name *" value={form.firstName || ""} onChange={(v) => set("firstName", v)} required />
-              <Field label="Middle Name" value={form.middleName || ""} onChange={(v) => set("middleName", v)} />
-              <Field label="Last Name *" value={form.lastName || ""} onChange={(v) => set("lastName", v)} required />
-              <Field label="Maiden Name" value={form.maidenName || ""} onChange={(v) => set("maidenName", v)} />
-              <Field label="Nickname / Praise Name" value={form.nickname || ""} onChange={(v) => set("nickname", v)} />
+              <Field
+                required
+                label="First Name *"
+                value={form.firstName || ""}
+                onChange={(v) => set("firstName", v)}
+              />
+              <Field
+                label="Middle Name"
+                value={form.middleName || ""}
+                onChange={(v) => set("middleName", v)}
+              />
+              <Field
+                required
+                label="Last Name *"
+                value={form.lastName || ""}
+                onChange={(v) => set("lastName", v)}
+              />
+              <Field
+                label="Maiden Name"
+                value={form.maidenName || ""}
+                onChange={(v) => set("maidenName", v)}
+              />
+              <Field
+                label="Nickname / Praise Name"
+                value={form.nickname || ""}
+                onChange={(v) => set("nickname", v)}
+              />
               <div className="space-y-2">
                 <Label>Gender</Label>
-                <Select value={form.gender || "unknown"} onValueChange={(v) => set("gender", v)}>
+                <Select
+                  value={form.gender || "unknown"}
+                  onValueChange={(v) => set("gender", v)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -149,11 +188,23 @@ export default function EditPersonPage() {
               <CardTitle className="text-primary">Life Details</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
-              <Field label="Birth Date" type="date" value={form.birthDate || ""} onChange={(v) => set("birthDate", v)} />
-              <Field label="Birth Place" value={form.birthPlace || ""} onChange={(v) => set("birthPlace", v)} />
+              <Field
+                label="Birth Date"
+                type="date"
+                value={form.birthDate || ""}
+                onChange={(v) => set("birthDate", v)}
+              />
+              <Field
+                label="Birth Place"
+                value={form.birthPlace || ""}
+                onChange={(v) => set("birthPlace", v)}
+              />
               <div className="space-y-2">
                 <Label>Status</Label>
-                <Select value={form.aliveStatus || "unknown"} onValueChange={(v) => set("aliveStatus", v)}>
+                <Select
+                  value={form.aliveStatus || "unknown"}
+                  onValueChange={(v) => set("aliveStatus", v)}
+                >
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
@@ -168,8 +219,17 @@ export default function EditPersonPage() {
               </div>
               {form.aliveStatus === "deceased" && (
                 <>
-                  <Field label="Death Date" type="date" value={form.deathDate || ""} onChange={(v) => set("deathDate", v)} />
-                  <Field label="Death Place" value={form.deathPlace || ""} onChange={(v) => set("deathPlace", v)} />
+                  <Field
+                    label="Death Date"
+                    type="date"
+                    value={form.deathDate || ""}
+                    onChange={(v) => set("deathDate", v)}
+                  />
+                  <Field
+                    label="Death Place"
+                    value={form.deathPlace || ""}
+                    onChange={(v) => set("deathPlace", v)}
+                  />
                 </>
               )}
             </CardContent>
@@ -182,7 +242,12 @@ export default function EditPersonPage() {
             <CardContent className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Clan</Label>
-                <Select value={form.clanId || "__none__"} onValueChange={(v) => set("clanId", v === "__none__" ? "" : v)}>
+                <Select
+                  value={form.clanId || "__none__"}
+                  onValueChange={(v) =>
+                    set("clanId", v === "__none__" ? "" : v)
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="— Select clan —" />
                   </SelectTrigger>
@@ -196,10 +261,26 @@ export default function EditPersonPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Field label="Tribe / Ethnicity" value={form.tribeEthnicity || ""} onChange={(v) => set("tribeEthnicity", v)} />
-              <Field label="Totem" value={form.totem || ""} onChange={(v) => set("totem", v)} />
-              <Field label="Origin Village" value={form.originVillage || ""} onChange={(v) => set("originVillage", v)} />
-              <Field label="Origin Country" value={form.originCountry || ""} onChange={(v) => set("originCountry", v)} />
+              <Field
+                label="Tribe / Ethnicity"
+                value={form.tribeEthnicity || ""}
+                onChange={(v) => set("tribeEthnicity", v)}
+              />
+              <Field
+                label="Totem"
+                value={form.totem || ""}
+                onChange={(v) => set("totem", v)}
+              />
+              <Field
+                label="Origin Village"
+                value={form.originVillage || ""}
+                onChange={(v) => set("originVillage", v)}
+              />
+              <Field
+                label="Origin Country"
+                value={form.originCountry || ""}
+                onChange={(v) => set("originCountry", v)}
+              />
             </CardContent>
           </Card>
 
@@ -208,23 +289,40 @@ export default function EditPersonPage() {
               <CardTitle className="text-primary">Story & Media</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Field label="Photo URL" value={form.photoUrl || ""} onChange={(v) => set("photoUrl", v)} />
+              <Field
+                label="Photo URL"
+                value={form.photoUrl || ""}
+                onChange={(v) => set("photoUrl", v)}
+              />
               <div className="space-y-2">
                 <Label>Biography</Label>
-                <Textarea rows={3} value={form.biography || ""} onChange={(e) => set("biography", e.target.value)} />
+                <Textarea
+                  rows={3}
+                  value={form.biography || ""}
+                  onChange={(e) => set("biography", e.target.value)}
+                />
               </div>
               <div className="space-y-2">
                 <Label>Oral History / Traditions</Label>
-                <Textarea rows={3} value={form.oralHistory || ""} onChange={(e) => set("oralHistory", e.target.value)} />
+                <Textarea
+                  rows={3}
+                  value={form.oralHistory || ""}
+                  onChange={(e) => set("oralHistory", e.target.value)}
+                />
               </div>
             </CardContent>
           </Card>
 
           <div className="flex gap-4">
-            <Button type="submit" disabled={saving} className="flex-1" size="lg">
+            <Button
+              className="flex-1"
+              disabled={saving}
+              size="lg"
+              type="submit"
+            >
               {saving ? "Saving..." : "Save Changes"}
             </Button>
-            <Button variant="secondary" size="lg" asChild>
+            <Button asChild size="lg" variant="secondary">
               <Link href={`/persons/${id}`}>Cancel</Link>
             </Button>
           </div>
@@ -252,7 +350,13 @@ function Field({
   return (
     <div className="space-y-2">
       <Label>{label}</Label>
-      <Input type={type} required={required} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} />
+      <Input
+        placeholder={placeholder}
+        required={required}
+        type={type}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
     </div>
   );
 }

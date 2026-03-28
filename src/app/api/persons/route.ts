@@ -23,14 +23,16 @@ export async function GET(req: NextRequest) {
   if (search) {
     qb.where(
       "CONCAT(person.firstName, ' ', person.lastName) LIKE :search OR person.nickname LIKE :search",
-      { search: `%${search}%` }
+      { search: `%${search}%` },
     );
   }
   if (clanId) {
     qb.andWhere("person.clanId = :clanId", { clanId: Number(clanId) });
   }
 
-  qb.skip((page - 1) * limit).take(limit).orderBy("person.lastName", "ASC");
+  qb.skip((page - 1) * limit)
+    .take(limit)
+    .orderBy("person.lastName", "ASC");
   const [persons, total] = await qb.getManyAndCount();
 
   return apiSuccess({ persons, total, page, limit }, "Persons retrieved");
@@ -39,16 +41,22 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   await initializeDataSource();
   const user = await getAuthUser(req);
+
   if (!user) return apiError(ApiError.unauthorized("Authentication required."));
 
   const body = await req.json();
   const repo = AppDataSource.getRepository(Person);
 
   const person = repo.create({ ...body, createdByUserId: user.id });
-  const saved = await repo.save(person) as unknown as Person;
+  const saved = (await repo.save(person)) as unknown as Person;
 
   // Award XP: check for photo and biography bonus events too
-  const gamification = await awardXP(user.id, XPEventType.ADD_PERSON, saved.id, `Added ${saved.firstName} ${saved.lastName}`);
+  const gamification = await awardXP(
+    user.id,
+    XPEventType.ADD_PERSON,
+    saved.id,
+    `Added ${saved.firstName} ${saved.lastName}`,
+  );
 
   if ((saved as any).photoUrl) {
     await awardXP(user.id, XPEventType.ADD_PHOTO, saved.id);
