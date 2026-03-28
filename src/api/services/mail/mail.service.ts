@@ -28,7 +28,7 @@ export const sendMail = async (
 ): Promise<void> => {
   try {
     const mailOptions = {
-      from: process.env.MAIL_FROM || "no-reply@myukoo.com",
+      from: `My Ukoo <${process.env.MAIL_FROM || "no-reply@myukoo.com"}>`,
       to,
       subject,
       html: baseTemplate(htmlContent, to)

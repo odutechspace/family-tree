@@ -24,21 +24,25 @@ export async function POST(req: NextRequest) {
 
     const user = await createUser(name, email, password);
     const customHtml = `
-      <h1 class="header">Welcome to Chama Smart! 🎉</h1>
+      <h1 class="header">Welcome to Ukoo – Discover Your Roots! 🌳</h1>
       <p>Hi <strong>${name}</strong>,</p>
-      <p>We’re thrilled to have you on board! Chama Smart is here to simplify your group management experience, empowering you with tools for seamless communication, insightful data analysis, and efficient financial collaboration.</p>
+      <p>Welcome to Ukoo, where your journey to connect, discover, and preserve your family heritage begins! 🎉</p>
+      <p>We’re thrilled to have you on board. At Ukoo, we believe every family story is a treasure, and we’re here to help you explore yours.</p>
       <h3>Here’s what you can do next:</h3>
       <ul>
-        <li><strong>Explore Your Dashboard</strong>: Gain a clear overview of your group activities.</li>
-        <li><strong>Stay Connected</strong>: Use WhatsApp integration to keep everyone updated.</li>
-        <li><strong>Leverage Insights</strong>: Analyze group trends and make data-driven decisions with our smart tools.</li>
+        <li><strong>Start Building Your Tree</strong>: Begin adding family members and creating your personalized family tree.</li>
+        <li><strong>Explore Your History</strong>: Discover fascinating insights about your heritage.</li>
+        <li><strong>Connect Generations</strong>: Share your tree and collaborate with family to grow your Ukoo.</li>
       </ul>
-      <p>If you need any help or have questions, feel free to reach out to us at <a href="mailto:support@chamasmart.com">support@chamasmart.com</a>.</p>
-      <p><a href="https://chamasmart.com/dashboard" class="button">Get Started</a></p>
-      <p>Let’s build something amazing together!</p>
+      <p>To get started, log in to your account here: <br/><a href="https://myukoo.com" class="button">Get Started</a></p>
+      <p>If you have any questions or need assistance, our support team is always here to help at <a href="mailto:support@myukoo.com">support@myukoo.com</a>.</p>
+      <p>Thank you for choosing Ukoo. Together, let’s celebrate your family’s story.</p>
+      <br/>
+      <p>Warm regards,</p>
+      <p>The Ukoo Team</p>
     `;
 
-    await sendMail(email, "Welcome to Chama Smart", customHtml);
+    await sendMail(email, "Welcome to Ukoo", customHtml);
 
     // @ts-ignore
     delete user?.password;
