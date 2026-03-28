@@ -1,8 +1,20 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 
-// import { User } from "@/src/api/entities/User";
 const User = require("@/src/api/entities/User").User;
+const Person = require("@/src/api/entities/Person").Person;
+const Relationship = require("@/src/api/entities/Relationship").Relationship;
+const FamilyTree = require("@/src/api/entities/FamilyTree").FamilyTree;
+const FamilyTreeMember = require("@/src/api/entities/FamilyTreeMember").FamilyTreeMember;
+const MergeRequest = require("@/src/api/entities/MergeRequest").MergeRequest;
+const LifeEvent = require("@/src/api/entities/LifeEvent").LifeEvent;
+const Clan = require("@/src/api/entities/Clan").Clan;
+const UserXP = require("@/src/api/entities/UserXP").UserXP;
+const XPEvent = require("@/src/api/entities/XPEvent").XPEvent;
+const Achievement = require("@/src/api/entities/Achievement").Achievement;
+const UserAchievement = require("@/src/api/entities/UserAchievement").UserAchievement;
+const Quest = require("@/src/api/entities/Quest").Quest;
+const UserQuest = require("@/src/api/entities/UserQuest").UserQuest;
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -10,12 +22,14 @@ export const AppDataSource = new DataSource({
   port: Number(process.env.DB_PORT) || 3306,
   username: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "chama_smart",
-  entities: [User], // Add all your entity files here
-  // entities: [__dirname + "/../api/entities/*.js"],
-  // synchronize: true, // Auto-create tables (disable in production)
-  synchronize: process.env.NODE_ENV !== "production", // Auto-create tables (disable in production)
-  logging: ["query", "error", "schema"],
+  database: process.env.DB_NAME || "ukoo",
+  entities: [
+    User, Person, Relationship, FamilyTree, FamilyTreeMember,
+    MergeRequest, LifeEvent, Clan,
+    UserXP, XPEvent, Achievement, UserAchievement, Quest, UserQuest,
+  ],
+  synchronize: process.env.NODE_ENV !== "production",
+  logging: ["error", "schema"],
 });
 
 let isInitialized = false;
@@ -25,11 +39,9 @@ export const initializeDataSource = async () => {
     try {
       await AppDataSource.initialize();
       isInitialized = true;
-      console.log("Entities registered:", AppDataSource.options.entities);
-      console.log("Database connection initialized.");
     } catch (error) {
       console.error("Failed to initialize database:", error);
-      throw error; // Rethrow the error for proper error handling
+      throw error;
     }
   }
 };
