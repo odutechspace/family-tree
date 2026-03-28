@@ -22,18 +22,28 @@ export const ThemeSwitch: FC<ThemeSwitchProps> = ({ className }) => {
   const isDark = resolvedTheme === "dark";
 
   if (!mounted) {
-    return <div className={cn("h-5 w-9 shrink-0", className)} aria-hidden />;
+    return <div aria-hidden className={cn("h-5 w-9 shrink-0", className)} />;
   }
 
   return (
     <div className={cn("flex items-center gap-2", className)}>
-      <SunFilledIcon className={cn("h-[22px] w-[22px]", isDark ? "text-muted-foreground" : "text-accent")} />
+      <SunFilledIcon
+        className={cn(
+          "h-[22px] w-[22px]",
+          isDark ? "text-muted-foreground" : "text-accent",
+        )}
+      />
       <Switch
+        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
         checked={isDark}
         onCheckedChange={(checked) => setTheme(checked ? "dark" : "light")}
-        aria-label={isDark ? "Switch to light mode" : "Switch to dark mode"}
       />
-      <MoonFilledIcon className={cn("h-[22px] w-[22px]", isDark ? "text-accent" : "text-muted-foreground")} />
+      <MoonFilledIcon
+        className={cn(
+          "h-[22px] w-[22px]",
+          isDark ? "text-accent" : "text-muted-foreground",
+        )}
+      />
     </div>
   );
 };

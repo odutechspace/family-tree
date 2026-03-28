@@ -10,13 +10,16 @@ import { QUEST_SEEDS } from "@/src/api/services/gamification/quests.seed";
 
 function getWeekStart(): string {
   const d = new Date();
+
   d.setDate(d.getDate() - d.getDay());
+
   return d.toISOString().split("T")[0];
 }
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
   const auth = await getAuthUser(req);
+
   if (!auth) return apiError(ApiError.unauthorized("Authentication required."));
 
   const questRepo = AppDataSource.getRepository(Quest);
@@ -25,6 +28,7 @@ export async function GET(req: NextRequest) {
   // Ensure quests seeded
   for (const seed of QUEST_SEEDS) {
     const existing = await questRepo.findOne({ where: { key: seed.key } });
+
     if (!existing) await questRepo.save(questRepo.create(seed as any));
   }
 
@@ -39,11 +43,19 @@ export async function GET(req: NextRequest) {
 
       if (q.type === QuestType.DAILY) {
         userQuest = await userQuestRepo.findOne({
-          where: { userId: auth.id, questKey: q.key, windowDate: new Date(today) as any },
+          where: {
+            userId: auth.id,
+            questKey: q.key,
+            windowDate: new Date(today) as any,
+          },
         });
       } else if (q.type === QuestType.WEEKLY) {
         userQuest = await userQuestRepo.findOne({
-          where: { userId: auth.id, questKey: q.key, windowDate: new Date(weekStart) as any },
+          where: {
+            userId: auth.id,
+            questKey: q.key,
+            windowDate: new Date(weekStart) as any,
+          },
         });
       } else {
         userQuest = await userQuestRepo.findOne({
@@ -64,15 +76,17 @@ export async function GET(req: NextRequest) {
         isCompleted: userQuest?.isCompleted ?? false,
         completedAt: userQuest?.completedAt ?? null,
       };
-    })
+    }),
   );
 
   // Group by type
   const grouped = {
-    onboarding: questsWithProgress.filter(q => q.type === QuestType.ONBOARDING),
-    daily: questsWithProgress.filter(q => q.type === QuestType.DAILY),
-    weekly: questsWithProgress.filter(q => q.type === QuestType.WEEKLY),
-    discovery: questsWithProgress.filter(q => q.type === QuestType.DISCOVERY),
+    onboarding: questsWithProgress.filter(
+      (q) => q.type === QuestType.ONBOARDING,
+    ),
+    daily: questsWithProgress.filter((q) => q.type === QuestType.DAILY),
+    weekly: questsWithProgress.filter((q) => q.type === QuestType.WEEKLY),
+    discovery: questsWithProgress.filter((q) => q.type === QuestType.DISCOVERY),
   };
 
   return apiSuccess({ quests: grouped }, "Quests retrieved");

@@ -2,7 +2,6 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
-import { FadeIn, StaggerItem, StaggerList } from "@/src/components/motion";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
@@ -27,12 +26,14 @@ export default function ClansPage() {
     setLoading(true);
     const res = await fetch(`/api/clans?search=${encodeURIComponent(q)}`);
     const data = await res.json();
+
     setClans(data.data?.clans || []);
     setLoading(false);
   };
 
   useEffect(() => {
     const t = setTimeout(() => fetchClans(search), 300);
+
     return () => clearTimeout(t);
   }, [search]);
 
@@ -43,22 +44,26 @@ export default function ClansPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-5xl">
-        <FadeIn className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-primary">Clans & Lineages</h1>
-            <p className="mt-1 text-muted-foreground">Explore African clans, totems, and ancestral groups</p>
+            <h1 className="text-3xl font-bold text-primary">
+              Clans & Lineages
+            </h1>
+            <p className="mt-1 text-muted-foreground">
+              Explore African clans, totems, and ancestral groups
+            </p>
           </div>
           <Button asChild size="lg">
             <Link href="/clans/new">+ Add Clan</Link>
           </Button>
-        </FadeIn>
+        </div>
 
         <Input
-          type="text"
+          className="mb-6 h-11"
           placeholder="Search clans, totems, ethnic groups..."
+          type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="mb-6 h-11"
         />
 
         {loading ? (
@@ -71,50 +76,60 @@ export default function ClansPage() {
           <div className="py-16 text-center text-muted-foreground">
             <p className="mb-4 text-5xl">🦁</p>
             <p className="mb-2 text-lg">No clans found</p>
-            <Button variant="link" asChild className="text-primary">
+            <Button asChild className="text-primary" variant="link">
               <Link href="/clans/new">Add the first clan →</Link>
             </Button>
           </div>
         ) : (
-          <StaggerList className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
             {clans.map((clan) => (
-              <StaggerItem key={clan.id}>
-                <Link href={`/clans/${clan.id}`} className="group block">
-                  <Card className="h-full border-border transition-colors hover:border-primary/40">
-                    <CardContent className="p-5">
-                      <div className="mb-3 flex items-start justify-between">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-xl">
-                          {clan.totem ? "🦁" : "🌍"}
-                        </div>
-                        {clan.isVerified && (
-                          <span className="rounded border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
-                            ✓
-                          </span>
-                        )}
+              <Link
+                key={clan.id}
+                className="group block"
+                href={`/clans/${clan.id}`}
+              >
+                <Card className="h-full border-border transition-colors hover:border-primary/40">
+                  <CardContent className="p-5">
+                    <div className="mb-3 flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-primary/20 bg-primary/10 text-xl">
+                        {clan.totem ? "🦁" : "🌍"}
                       </div>
-                      <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary">{clan.name}</h3>
-                      {clan.alternateName && <p className="text-sm text-primary/80">{clan.alternateName}</p>}
-                      <div className="mt-3 flex flex-wrap gap-1.5">
-                        {clan.totem && (
-                          <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary">
-                            Totem: {clan.totem}
-                          </span>
-                        )}
-                        {clan.ethnicGroup && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">{clan.ethnicGroup}</span>
-                        )}
-                        {clan.originCountry && (
-                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
-                            🌍 {clan.originCountry}
-                          </span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </Link>
-              </StaggerItem>
+                      {clan.isVerified && (
+                        <span className="rounded border border-emerald-200 bg-emerald-100 px-1.5 py-0.5 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400">
+                          ✓
+                        </span>
+                      )}
+                    </div>
+                    <h3 className="text-lg font-bold text-foreground transition-colors group-hover:text-primary">
+                      {clan.name}
+                    </h3>
+                    {clan.alternateName && (
+                      <p className="text-sm text-primary/80">
+                        {clan.alternateName}
+                      </p>
+                    )}
+                    <div className="mt-3 flex flex-wrap gap-1.5">
+                      {clan.totem && (
+                        <span className="rounded-full border border-primary/25 bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                          Totem: {clan.totem}
+                        </span>
+                      )}
+                      {clan.ethnicGroup && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          {clan.ethnicGroup}
+                        </span>
+                      )}
+                      {clan.originCountry && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+                          🌍 {clan.originCountry}
+                        </span>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </Link>
             ))}
-          </StaggerList>
+          </div>
         )}
       </div>
     </div>

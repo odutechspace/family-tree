@@ -16,6 +16,16 @@ export interface PersonNodeData {
   tribeEthnicity?: string;
   isRoot?: boolean;
   unionOrder?: number;
+  onAddRelative?: (
+    person: {
+      id: number;
+      firstName: string;
+      lastName: string;
+      gender: string;
+      aliveStatus: string;
+    },
+    role: "parent" | "child" | "spouse",
+  ) => void;
 }
 
 function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
@@ -41,38 +51,69 @@ function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
         ? "bg-pink-200 text-pink-950 dark:bg-pink-950 dark:text-pink-200"
         : "bg-muted-foreground/20 text-foreground";
 
+  const person = {
+    id: data.id,
+    firstName: data.firstName,
+    lastName: data.lastName,
+    gender: data.gender,
+    aliveStatus: data.aliveStatus,
+  };
+
   return (
     <div
-      className={`relative w-36 cursor-pointer rounded-xl border-2 shadow-lg transition-all hover:scale-105 ${genderBorder} ${genderBg} ${selected ? "ring-2 ring-primary" : ""} ${data.isRoot ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+      className={`group relative w-36 cursor-pointer rounded-xl border-2 shadow-lg transition-all hover:scale-105 ${genderBorder} ${genderBg} ${selected ? "ring-2 ring-primary" : ""} ${data.isRoot ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
     >
-      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !bg-primary" />
+      <Handle
+        className="!h-3 !w-3 !bg-primary"
+        position={Position.Top}
+        type="target"
+      />
 
-      <Link href={`/persons/${data.id}`} className="block p-3 no-underline" onClick={(e) => e.stopPropagation()}>
+      <Link
+        className="block p-3 no-underline"
+        href={`/persons/${data.id}`}
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="flex flex-col items-center gap-2">
           <div
             className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 ${genderBorder} ${isDeceased ? "opacity-60 grayscale" : ""} ${avatarInner}`}
           >
             {data.photoUrl ? (
-              <img src={data.photoUrl} alt="" className="h-full w-full object-cover" />
+              <img
+                alt=""
+                className="h-full w-full object-cover"
+                src={data.photoUrl}
+              />
             ) : (
               <span className="text-lg font-bold">{initials || "?"}</span>
             )}
           </div>
           <div className="text-center">
-            <p className={`text-xs font-semibold leading-tight ${isDeceased ? "text-muted-foreground" : "text-foreground"}`}>
+            <p
+              className={`text-xs font-semibold leading-tight ${isDeceased ? "text-muted-foreground" : "text-foreground"}`}
+            >
               {data.firstName} {data.lastName}
             </p>
-            {data.nickname && <p className="text-xs text-primary/80">&quot;{data.nickname}&quot;</p>}
+            {data.nickname && (
+              <p className="text-xs text-primary/80">
+                &quot;{data.nickname}&quot;
+              </p>
+            )}
             {data.unionOrder && data.unionOrder > 1 && (
-              <span className="text-xs text-primary">Wife #{data.unionOrder}</span>
+              <span className="text-xs text-primary">
+                Wife #{data.unionOrder}
+              </span>
             )}
             <div className="mt-1 flex flex-wrap justify-center gap-1">
               {data.birthDate && (
-                <span className="text-xs text-muted-foreground">{new Date(data.birthDate).getFullYear()}</span>
+                <span className="text-xs text-muted-foreground">
+                  {new Date(data.birthDate).getFullYear()}
+                </span>
               )}
               {isDeceased && (
                 <span className="text-xs text-muted-foreground">
-                  †{data.deathDate ? new Date(data.deathDate).getFullYear() : ""}
+                  †
+                  {data.deathDate ? new Date(data.deathDate).getFullYear() : ""}
                 </span>
               )}
             </div>
@@ -80,7 +121,49 @@ function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
         </div>
       </Link>
 
-      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-primary" />
+      {data.onAddRelative && (
+        <div className="absolute -bottom-7 left-0 right-0 hidden justify-center gap-1 group-hover:flex">
+          <button
+            className="rounded bg-background/90 px-1.5 py-0.5 text-xs font-medium text-primary shadow ring-1 ring-border hover:bg-primary hover:text-primary-foreground"
+            title="Add parent"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onAddRelative!(person, "parent");
+            }}
+          >
+            +Parent
+          </button>
+          <button
+            className="rounded bg-background/90 px-1.5 py-0.5 text-xs font-medium text-primary shadow ring-1 ring-border hover:bg-primary hover:text-primary-foreground"
+            title="Add spouse"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onAddRelative!(person, "spouse");
+            }}
+          >
+            +Spouse
+          </button>
+          <button
+            className="rounded bg-background/90 px-1.5 py-0.5 text-xs font-medium text-primary shadow ring-1 ring-border hover:bg-primary hover:text-primary-foreground"
+            title="Add child"
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              data.onAddRelative!(person, "child");
+            }}
+          >
+            +Child
+          </button>
+        </div>
+      )}
+
+      <Handle
+        className="!h-3 !w-3 !bg-primary"
+        position={Position.Bottom}
+        type="source"
+      />
     </div>
   );
 }

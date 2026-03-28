@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import AchievementBadge from "@/src/components/gamification/AchievementBadge";
-import { FadeIn, StaggerItem, StaggerList } from "@/src/components/motion";
 import XPBar from "@/src/components/gamification/XPBar";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
@@ -52,8 +51,14 @@ export default function AchievementsPage() {
       });
   }, []);
 
-  const categories = ["all", ...Array.from(new Set(achievements.map((a) => a.category)))];
-  const filtered = activeCategory === "all" ? achievements : achievements.filter((a) => a.category === activeCategory);
+  const categories = [
+    "all",
+    ...Array.from(new Set(achievements.map((a) => a.category))),
+  ];
+  const filtered =
+    activeCategory === "all"
+      ? achievements
+      : achievements.filter((a) => a.category === activeCategory);
   const unlocked = filtered.filter((a) => a.isUnlocked);
   const locked = filtered.filter((a) => !a.isUnlocked);
   const pct = Math.floor((totalUnlocked / Math.max(total, 1)) * 100);
@@ -61,15 +66,17 @@ export default function AchievementsPage() {
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-5xl">
-        <FadeIn className="mb-6 flex items-center gap-3">
-          <Button variant="ghost" size="sm" asChild>
+        <div className="mb-6 flex items-center gap-3">
+          <Button asChild size="sm" variant="ghost">
             <Link href="/dashboard">← Dashboard</Link>
           </Button>
-        </FadeIn>
+        </div>
 
-        <FadeIn className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center" delay={0.04}>
+        <div className="mb-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-amber-600 dark:text-amber-400">Achievements</h1>
+            <h1 className="text-3xl font-bold text-amber-600 dark:text-amber-400">
+              Achievements
+            </h1>
             <p className="mt-1 text-muted-foreground">
               {totalUnlocked}/{total} unlocked
             </p>
@@ -82,33 +89,35 @@ export default function AchievementsPage() {
                   style={{ width: `${pct}%` }}
                 />
               </div>
-              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{pct}%</span>
+              <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                {pct}%
+              </span>
             </CardContent>
           </Card>
-        </FadeIn>
+        </div>
 
-        <FadeIn delay={0.06}>
-          <XPBar />
-        </FadeIn>
+        <XPBar />
 
-        <FadeIn className="mb-6 mt-6 flex flex-wrap gap-2" delay={0.08}>
+        <div className="mb-6 mt-6 flex flex-wrap gap-2">
           {categories.map((cat) => (
             <Button
               key={cat}
-              type="button"
-              size="sm"
-              variant={activeCategory === cat ? "default" : "secondary"}
               className={
                 activeCategory === cat
                   ? "bg-amber-600 text-white hover:bg-amber-500 dark:bg-amber-600 dark:hover:bg-amber-500"
                   : "capitalize"
               }
+              size="sm"
+              type="button"
+              variant={activeCategory === cat ? "default" : "secondary"}
               onClick={() => setActiveCategory(cat)}
             >
-              {cat === "all" ? "All" : `${CATEGORY_LABELS[cat]?.icon || ""} ${CATEGORY_LABELS[cat]?.label || cat}`}
+              {cat === "all"
+                ? "All"
+                : `${CATEGORY_LABELS[cat]?.icon || ""} ${CATEGORY_LABELS[cat]?.label || cat}`}
             </Button>
           ))}
-        </FadeIn>
+        </div>
 
         {loading ? (
           <div className="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-5">
@@ -123,25 +132,21 @@ export default function AchievementsPage() {
                 <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Unlocked ({unlocked.length})
                 </h2>
-                <StaggerList
-                  key={`unlocked-${activeCategory}`}
-                  className="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
-                >
+                <div className="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                   {unlocked.map((a) => (
-                    <StaggerItem key={a.key}>
-                      <AchievementBadge
-                        icon={a.icon}
-                        name={a.name}
-                        description={a.description}
-                        rarity={a.rarity}
-                        category={a.category}
-                        xpReward={a.xpReward}
-                        isUnlocked={true}
-                        unlockedAt={a.unlockedAt}
-                      />
-                    </StaggerItem>
+                    <AchievementBadge
+                      key={a.key}
+                      category={a.category}
+                      description={a.description}
+                      icon={a.icon}
+                      isUnlocked={true}
+                      name={a.name}
+                      rarity={a.rarity}
+                      unlockedAt={a.unlockedAt}
+                      xpReward={a.xpReward}
+                    />
                   ))}
-                </StaggerList>
+                </div>
               </div>
             )}
 
@@ -150,24 +155,20 @@ export default function AchievementsPage() {
                 <h2 className="mb-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
                   Locked ({locked.length})
                 </h2>
-                <StaggerList
-                  key={`locked-${activeCategory}`}
-                  className="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6"
-                >
+                <div className="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6">
                   {locked.map((a) => (
-                    <StaggerItem key={a.key}>
-                      <AchievementBadge
-                        icon={a.icon}
-                        name={a.name}
-                        description={a.description}
-                        rarity={a.rarity}
-                        category={a.category}
-                        xpReward={a.xpReward}
-                        isUnlocked={false}
-                      />
-                    </StaggerItem>
+                    <AchievementBadge
+                      key={a.key}
+                      category={a.category}
+                      description={a.description}
+                      icon={a.icon}
+                      isUnlocked={false}
+                      name={a.name}
+                      rarity={a.rarity}
+                      xpReward={a.xpReward}
+                    />
                   ))}
-                </StaggerList>
+                </div>
               </div>
             )}
           </>

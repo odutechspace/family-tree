@@ -1,12 +1,13 @@
+import { ACHIEVEMENT_SEEDS } from "./achievements.seed";
+import { QUEST_SEEDS } from "./quests.seed";
+
 import { AppDataSource } from "@/src/config/db";
-import { UserXP, calcLevel, LEVEL_THRESHOLDS } from "@/src/api/entities/UserXP";
+import { UserXP, calcLevel } from "@/src/api/entities/UserXP";
 import { XPEvent, XPEventType } from "@/src/api/entities/XPEvent";
 import { Achievement } from "@/src/api/entities/Achievement";
 import { UserAchievement } from "@/src/api/entities/UserAchievement";
 import { Quest, QuestType } from "@/src/api/entities/Quest";
 import { UserQuest } from "@/src/api/entities/UserQuest";
-import { ACHIEVEMENT_SEEDS } from "./achievements.seed";
-import { QUEST_SEEDS } from "./quests.seed";
 
 // XP values per action
 export const XP_VALUES: Record<XPEventType, number> = {
@@ -37,8 +38,18 @@ export interface GamificationResult {
   leveledUp: boolean;
   newLevel?: number;
   newLevelName?: string;
-  newAchievements: Array<{ key: string; name: string; icon: string; xpReward: number }>;
-  newQuestsCompleted: Array<{ key: string; title: string; icon: string; xpReward: number }>;
+  newAchievements: Array<{
+    key: string;
+    name: string;
+    icon: string;
+    xpReward: number;
+  }>;
+  newQuestsCompleted: Array<{
+    key: string;
+    title: string;
+    icon: string;
+    xpReward: number;
+  }>;
   streakBonus: number;
 }
 
@@ -53,8 +64,10 @@ async function ensureSeeded() {
 
 async function seedAchievements() {
   const repo = AppDataSource.getRepository(Achievement);
+
   for (const seed of ACHIEVEMENT_SEEDS) {
     const existing = await repo.findOne({ where: { key: seed.key } });
+
     if (!existing) {
       await repo.save(repo.create(seed as any));
     }
@@ -63,8 +76,10 @@ async function seedAchievements() {
 
 async function seedQuests() {
   const repo = AppDataSource.getRepository(Quest);
+
   for (const seed of QUEST_SEEDS) {
     const existing = await repo.findOne({ where: { key: seed.key } });
+
     if (!existing) {
       await repo.save(repo.create(seed as any));
     }
@@ -74,10 +89,12 @@ async function seedQuests() {
 async function getOrCreateUserXP(userId: number): Promise<UserXP> {
   const repo = AppDataSource.getRepository(UserXP);
   let xp = await repo.findOne({ where: { userId } });
+
   if (!xp) {
     xp = repo.create({ userId, totalXP: 0, level: 1 });
-    xp = await repo.save(xp) as unknown as UserXP;
+    xp = (await repo.save(xp)) as unknown as UserXP;
   }
+
   return xp;
 }
 
@@ -90,8 +107,10 @@ function updateStreak(xp: UserXP): number {
   if (last === today) return 0; // already active today, no bonus
 
   let streakBonus = 0;
+
   if (last) {
     const yesterday = new Date();
+
     yesterday.setDate(yesterday.getDate() - 1);
     const yDate = yesterday.toISOString().split("T")[0];
 
@@ -111,93 +130,188 @@ function updateStreak(xp: UserXP): number {
   xp.lastActivityDate = new Date();
 
   // Streak bonus XP: 7-day multiples give extra
-  if (xp.currentStreak % 7 === 0) streakBonus = XP_VALUES[XPEventType.WEEKLY_STREAK];
-  else if (xp.currentStreak > 1) streakBonus = XP_VALUES[XPEventType.DAILY_STREAK];
+  if (xp.currentStreak % 7 === 0)
+    streakBonus = XP_VALUES[XPEventType.WEEKLY_STREAK];
+  else if (xp.currentStreak > 1)
+    streakBonus = XP_VALUES[XPEventType.DAILY_STREAK];
 
   return streakBonus;
 }
 
-async function checkAchievements(userId: number, xp: UserXP): Promise<Array<{ key: string; name: string; icon: string; xpReward: number }>> {
+async function checkAchievements(
+  userId: number,
+  xp: UserXP,
+): Promise<
+  Array<{ key: string; name: string; icon: string; xpReward: number }>
+> {
   const achievementRepo = AppDataSource.getRepository(Achievement);
   const userAchRepo = AppDataSource.getRepository(UserAchievement);
 
-  const allAchievements = await achievementRepo.find({ where: { isActive: true } });
+  const allAchievements = await achievementRepo.find({
+    where: { isActive: true },
+  });
   const unlocked = await userAchRepo.find({ where: { userId } });
-  const unlockedKeys = new Set(unlocked.map(u => u.achievementKey));
+  const unlockedKeys = new Set(unlocked.map((u) => u.achievementKey));
 
-  const newlyUnlocked: Array<{ key: string; name: string; icon: string; xpReward: number }> = [];
+  const newlyUnlocked: Array<{
+    key: string;
+    name: string;
+    icon: string;
+    xpReward: number;
+  }> = [];
 
   for (const ach of allAchievements) {
     if (unlockedKeys.has(ach.key)) continue;
     if (!ach.progressField || !ach.progressTarget) continue;
 
     const current = (xp as any)[ach.progressField] as number;
+
     if (current >= ach.progressTarget) {
-      await userAchRepo.save(userAchRepo.create({
-        userId,
-        achievementId: ach.id,
-        achievementKey: ach.key,
-      }));
-      newlyUnlocked.push({ key: ach.key, name: ach.name, icon: ach.icon, xpReward: ach.xpReward });
+      await userAchRepo.save(
+        userAchRepo.create({
+          userId,
+          achievementId: ach.id,
+          achievementKey: ach.key,
+        }),
+      );
+      newlyUnlocked.push({
+        key: ach.key,
+        name: ach.name,
+        icon: ach.icon,
+        xpReward: ach.xpReward,
+      });
     }
   }
 
   return newlyUnlocked;
 }
 
-async function checkQuestProgress(userId: number, eventType: XPEventType): Promise<Array<{ key: string; title: string; icon: string; xpReward: number }>> {
+async function checkQuestProgress(
+  userId: number,
+  eventType: XPEventType,
+): Promise<
+  Array<{ key: string; title: string; icon: string; xpReward: number }>
+> {
   const questRepo = AppDataSource.getRepository(Quest);
   const userQuestRepo = AppDataSource.getRepository(UserQuest);
 
   // Get quests that track this event type
-  const matchingQuests = await questRepo.find({ where: { trackedEvent: eventType, isActive: true } });
-  const completed: Array<{ key: string; title: string; icon: string; xpReward: number }> = [];
+  const matchingQuests = await questRepo.find({
+    where: { trackedEvent: eventType, isActive: true },
+  });
+  const completed: Array<{
+    key: string;
+    title: string;
+    icon: string;
+    xpReward: number;
+  }> = [];
 
   const today = new Date().toISOString().split("T")[0];
   const weekStart = getWeekStart();
 
   for (const quest of matchingQuests) {
     // For onboarding/discovery quests, check if already fully completed (no window)
-    if (quest.type === QuestType.ONBOARDING || quest.type === QuestType.DISCOVERY) {
-      const existing = await userQuestRepo.findOne({ where: { userId, questKey: quest.key } });
+    if (
+      quest.type === QuestType.ONBOARDING ||
+      quest.type === QuestType.DISCOVERY
+    ) {
+      const existing = await userQuestRepo.findOne({
+        where: { userId, questKey: quest.key },
+      });
+
       if (existing?.isCompleted) continue;
 
-      const uq = existing || userQuestRepo.create({ userId, questId: quest.id, questKey: quest.key, progress: 0 });
+      const uq =
+        existing ||
+        userQuestRepo.create({
+          userId,
+          questId: quest.id,
+          questKey: quest.key,
+          progress: 0,
+        });
+
       uq.progress += 1;
       if (uq.progress >= quest.targetCount) {
         uq.isCompleted = true;
         uq.completedAt = new Date();
-        completed.push({ key: quest.key, title: quest.title, icon: quest.icon, xpReward: quest.xpReward });
+        completed.push({
+          key: quest.key,
+          title: quest.title,
+          icon: quest.icon,
+          xpReward: quest.xpReward,
+        });
       }
       await userQuestRepo.save(uq);
     }
 
     // Daily quests
     if (quest.type === QuestType.DAILY) {
-      const existing = await userQuestRepo.findOne({ where: { userId, questKey: quest.key, windowDate: new Date(today) as any } });
+      const existing = await userQuestRepo.findOne({
+        where: {
+          userId,
+          questKey: quest.key,
+          windowDate: new Date(today) as any,
+        },
+      });
+
       if (existing?.isCompleted) continue;
 
-      const uq = existing || userQuestRepo.create({ userId, questId: quest.id, questKey: quest.key, progress: 0, windowDate: new Date(today) as any });
+      const uq =
+        existing ||
+        userQuestRepo.create({
+          userId,
+          questId: quest.id,
+          questKey: quest.key,
+          progress: 0,
+          windowDate: new Date(today) as any,
+        });
+
       uq.progress += 1;
       if (uq.progress >= quest.targetCount) {
         uq.isCompleted = true;
         uq.completedAt = new Date();
-        completed.push({ key: quest.key, title: quest.title, icon: quest.icon, xpReward: quest.xpReward });
+        completed.push({
+          key: quest.key,
+          title: quest.title,
+          icon: quest.icon,
+          xpReward: quest.xpReward,
+        });
       }
       await userQuestRepo.save(uq);
     }
 
     // Weekly quests
     if (quest.type === QuestType.WEEKLY) {
-      const existing = await userQuestRepo.findOne({ where: { userId, questKey: quest.key, windowDate: new Date(weekStart) as any } });
+      const existing = await userQuestRepo.findOne({
+        where: {
+          userId,
+          questKey: quest.key,
+          windowDate: new Date(weekStart) as any,
+        },
+      });
+
       if (existing?.isCompleted) continue;
 
-      const uq = existing || userQuestRepo.create({ userId, questId: quest.id, questKey: quest.key, progress: 0, windowDate: new Date(weekStart) as any });
+      const uq =
+        existing ||
+        userQuestRepo.create({
+          userId,
+          questId: quest.id,
+          questKey: quest.key,
+          progress: 0,
+          windowDate: new Date(weekStart) as any,
+        });
+
       uq.progress += 1;
       if (uq.progress >= quest.targetCount) {
         uq.isCompleted = true;
         uq.completedAt = new Date();
-        completed.push({ key: quest.key, title: quest.title, icon: quest.icon, xpReward: quest.xpReward });
+        completed.push({
+          key: quest.key,
+          title: quest.title,
+          icon: quest.icon,
+          xpReward: quest.xpReward,
+        });
       }
       await userQuestRepo.save(uq);
     }
@@ -208,7 +322,9 @@ async function checkQuestProgress(userId: number, eventType: XPEventType): Promi
 
 function getWeekStart(): string {
   const d = new Date();
+
   d.setDate(d.getDate() - d.getDay());
+
   return d.toISOString().split("T")[0];
 }
 
@@ -254,6 +370,7 @@ export async function awardXP(
   };
 
   const field = counterMap[eventType];
+
   if (field) (xp as any)[field] = ((xp as any)[field] as number) + 1;
 
   // Apply any caller-provided overrides (e.g. level field for level-based achievements)
@@ -268,27 +385,32 @@ export async function awardXP(
   await xpRepo.save(xp);
 
   // Log the XP event
-  await eventRepo.save(eventRepo.create({
-    userId,
-    type: eventType,
-    xpAwarded: totalAwarded,
-    referenceId,
-    description,
-  }));
+  await eventRepo.save(
+    eventRepo.create({
+      userId,
+      type: eventType,
+      xpAwarded: totalAwarded,
+      referenceId,
+      description,
+    }),
+  );
 
   // Check achievements
   const newAchievements = await checkAchievements(userId, xp);
 
   // Award bonus XP for achievements
   let achievementXP = 0;
+
   for (const ach of newAchievements) {
     achievementXP += ach.xpReward;
-    await eventRepo.save(eventRepo.create({
-      userId,
-      type: XPEventType.ACHIEVEMENT_UNLOCKED,
-      xpAwarded: ach.xpReward,
-      description: `Achievement: ${ach.name}`,
-    }));
+    await eventRepo.save(
+      eventRepo.create({
+        userId,
+        type: XPEventType.ACHIEVEMENT_UNLOCKED,
+        xpAwarded: ach.xpReward,
+        description: `Achievement: ${ach.name}`,
+      }),
+    );
   }
   if (achievementXP > 0) {
     xp.totalXP += achievementXP;
@@ -301,14 +423,17 @@ export async function awardXP(
 
   // Award quest XP
   let questXP = 0;
+
   for (const q of newQuestsCompleted) {
     questXP += q.xpReward;
-    await eventRepo.save(eventRepo.create({
-      userId,
-      type: XPEventType.QUEST_COMPLETED,
-      xpAwarded: q.xpReward,
-      description: `Quest: ${q.title}`,
-    }));
+    await eventRepo.save(
+      eventRepo.create({
+        userId,
+        type: XPEventType.QUEST_COMPLETED,
+        xpAwarded: q.xpReward,
+        description: `Quest: ${q.title}`,
+      }),
+    );
   }
   if (questXP > 0) {
     xp.totalXP += questXP;
@@ -317,7 +442,16 @@ export async function awardXP(
   }
 
   // Resolve level name for level-up notification
-  const LEVEL_NAMES = ["Seedling", "Root Finder", "Branch Builder", "Tree Keeper", "Elder Scribe", "Clan Historian", "Ancestral Voice", "Griot Master"];
+  const LEVEL_NAMES = [
+    "Seedling",
+    "Root Finder",
+    "Branch Builder",
+    "Tree Keeper",
+    "Elder Scribe",
+    "Clan Historian",
+    "Ancestral Voice",
+    "Griot Master",
+  ];
 
   return {
     xpAwarded: totalAwarded + achievementXP + questXP,
@@ -325,7 +459,8 @@ export async function awardXP(
     level: xp.level,
     leveledUp: xp.level > previousLevel,
     newLevel: xp.level > previousLevel ? xp.level : undefined,
-    newLevelName: xp.level > previousLevel ? LEVEL_NAMES[xp.level - 1] : undefined,
+    newLevelName:
+      xp.level > previousLevel ? LEVEL_NAMES[xp.level - 1] : undefined,
     newAchievements,
     newQuestsCompleted,
     streakBonus,

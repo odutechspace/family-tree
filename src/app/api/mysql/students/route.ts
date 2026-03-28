@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 // import mysql2/promise for mysql connectivity
 import mysql from "mysql2/promise";
+
 // import GetDBSettings to retrieve the database connection environment parameters,
 // and the IDBSettings object interface
 import { GetDBSettings } from "@/src/shared/common";
@@ -40,7 +41,7 @@ export async function GET(request: Request) {
 
     const response = {
       error: (err as Error).message,
-      returnedStatus: 200
+      returnedStatus: 200,
     };
 
     return NextResponse.json(response, { status: 200 });

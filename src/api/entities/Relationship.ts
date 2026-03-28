@@ -58,7 +58,11 @@ export class Relationship {
   @Column({ type: "enum", enum: RelationshipType })
   type: RelationshipType;
 
-  @Column({ type: "enum", enum: RelationshipStatus, default: RelationshipStatus.ACTIVE })
+  @Column({
+    type: "enum",
+    enum: RelationshipStatus,
+    default: RelationshipStatus.ACTIVE,
+  })
   status: RelationshipStatus;
 
   // Marriage-specific fields

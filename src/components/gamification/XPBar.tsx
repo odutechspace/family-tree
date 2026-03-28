@@ -53,7 +53,7 @@ export default function XPBar({ compact = false }: { compact?: boolean }) {
 
   if (compact) {
     return (
-      <Link href="/achievements" className="group flex items-center gap-2">
+      <Link className="group flex items-center gap-2" href="/achievements">
         <div
           className={`flex h-7 w-7 items-center justify-center rounded-full bg-gradient-to-br ${gradient} text-xs font-bold text-white shadow ring-2 ${ring}`}
         >
@@ -65,7 +65,9 @@ export default function XPBar({ compact = false }: { compact?: boolean }) {
               {profile.xpIntoLevel}/{profile.xpNeededForLevel} XP
             </span>
             {profile.currentStreak > 0 && (
-              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">🔥{profile.currentStreak}</span>
+              <span className="text-xs font-medium text-orange-600 dark:text-orange-400">
+                🔥{profile.currentStreak}
+              </span>
             )}
           </div>
           <div className="h-1 w-20 overflow-hidden rounded-full bg-muted">
@@ -91,14 +93,22 @@ export default function XPBar({ compact = false }: { compact?: boolean }) {
           <div className="flex-1">
             <div className="mb-1 flex items-center justify-between">
               <div>
-                <span className="font-semibold text-foreground">{profile.levelName}</span>
-                <span className="ml-2 text-sm text-muted-foreground">Level {profile.level}</span>
+                <span className="font-semibold text-foreground">
+                  {profile.levelName}
+                </span>
+                <span className="ml-2 text-sm text-muted-foreground">
+                  Level {profile.level}
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 {profile.currentStreak > 0 && (
                   <div className="flex items-center gap-1 rounded-full border border-orange-300 bg-orange-100 px-2 py-0.5 dark:border-orange-700/50 dark:bg-orange-950/40">
-                    <span className="text-sm text-orange-600 dark:text-orange-400">🔥</span>
-                    <span className="text-xs font-medium text-orange-800 dark:text-orange-300">{profile.currentStreak} day streak</span>
+                    <span className="text-sm text-orange-600 dark:text-orange-400">
+                      🔥
+                    </span>
+                    <span className="text-xs font-medium text-orange-800 dark:text-orange-300">
+                      {profile.currentStreak} day streak
+                    </span>
                   </div>
                 )}
                 <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">
@@ -115,8 +125,12 @@ export default function XPBar({ compact = false }: { compact?: boolean }) {
               </div>
             </div>
             <div className="mt-1 flex justify-between">
-              <span className="text-xs text-muted-foreground">{profile.xpIntoLevel} XP</span>
-              <span className="text-xs text-muted-foreground">{profile.xpNeededForLevel} XP to next level</span>
+              <span className="text-xs text-muted-foreground">
+                {profile.xpIntoLevel} XP
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {profile.xpNeededForLevel} XP to next level
+              </span>
             </div>
           </div>
         </div>
