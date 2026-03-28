@@ -6,8 +6,10 @@ export interface AuthUser {
   name: string;
   email: string;
   role: string;
-  profilePhotoUrl?: string;
-  linkedPersonId?: number;
+  profilePhotoUrl?: string | null;
+  linkedPersonId?: number | null;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export function useAuth() {

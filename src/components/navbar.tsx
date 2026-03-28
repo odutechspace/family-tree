@@ -12,6 +12,7 @@ const NAV_LINKS = [
   { href: "/trees", label: "Trees" },
   { href: "/clans", label: "Clans" },
   { href: "/merge-requests", label: "Merges" },
+  { href: "/profile", label: "Profile" },
 ];
 
 export function Navbar() {
@@ -67,7 +68,11 @@ export function Navbar() {
           {user ? (
             <div className="flex items-center gap-2">
               <XPBar compact />
-              <Link href="/dashboard" className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 rounded-lg transition">
+              <Link
+                href="/profile"
+                className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-stone-800 hover:bg-stone-700 rounded-lg transition"
+                title="Your profile"
+              >
                 <div className="w-5 h-5 rounded-full bg-amber-700 flex items-center justify-center text-xs font-bold text-white">
                   {user.name[0]}
                 </div>

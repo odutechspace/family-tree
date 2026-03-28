@@ -25,10 +25,10 @@ export class User {
   role: UserRole;
 
   @Column({ nullable: true })
-  profilePhotoUrl: string;
+  profilePhotoUrl: string | null;
 
   @Column({ nullable: true })
-  linkedPersonId: number;
+  linkedPersonId: number | null;
 
   @CreateDateColumn()
   createdAt: Date;
