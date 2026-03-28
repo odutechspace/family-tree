@@ -2,6 +2,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+
+import { Logo } from "@/src/components/icons";
 import { ThemeSwitch } from "@/src/components/theme-switch";
 import XPBar from "@/src/components/gamification/XPBar";
 
@@ -34,15 +36,18 @@ export function Navbar() {
   };
 
   // Hide navbar on auth pages
-  if (pathname === "/login" || pathname === "/register") return null;
+  if (pathname.startsWith("/auth/")) return null;
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-stone-900/90 backdrop-blur border-b border-stone-800">
       <div className="max-w-7xl mx-auto px-4 flex items-center justify-between h-14">
         {/* Logo */}
-        <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2">
-          <span className="text-amber-400 font-bold text-xl tracking-tight">My Ukoo</span>
-          <span className="hidden sm:inline text-stone-500 text-xs">Discover · Connect · Preserve</span>
+        <Link href={user ? "/dashboard" : "/"} className="flex items-center gap-2.5 shrink-0">
+          <Logo className="h-8 w-8 shrink-0" size={32} variant="onDark" />
+          <span className="flex flex-col leading-tight">
+            <span className="text-amber-400 font-bold text-lg sm:text-xl tracking-tight">My Ukoo</span>
+            <span className="hidden sm:inline text-stone-500 text-[10px]">Discover · Connect · Preserve</span>
+          </span>
         </Link>
 
         {/* Desktop nav */}
@@ -85,8 +90,8 @@ export function Navbar() {
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Link href="/login" className="px-3 py-1.5 text-stone-400 hover:text-white text-sm transition">Sign In</Link>
-              <Link href="/register" className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-lg transition">
+              <Link href="/auth/login" className="px-3 py-1.5 text-stone-400 hover:text-white text-sm transition">Sign In</Link>
+              <Link href="/auth/register" className="px-3 py-1.5 bg-amber-600 hover:bg-amber-500 text-white text-sm font-medium rounded-lg transition">
                 Get Started
               </Link>
             </div>

@@ -26,7 +26,7 @@ export default function DashboardPage() {
   const [activityFeed, setActivityFeed] = useState<any[]>([]);
 
   useEffect(() => {
-    if (!loading && !user) router.push("/login");
+    if (!loading && !user) router.push("/auth/login");
   }, [user, loading]);
 
   useEffect(() => {

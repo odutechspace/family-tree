@@ -39,7 +39,7 @@ export function useAuth() {
   const logout = async () => {
     await fetch("/api/auth/signout", { method: "POST" });
     setUser(null);
-    window.location.href = "/login";
+    window.location.href = "/auth/login";
   };
 
   return { user, loading, refetch: fetchUser, logout };

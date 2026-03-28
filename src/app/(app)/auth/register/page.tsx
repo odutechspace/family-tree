@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+import { Logo } from "@/src/components/icons";
+
 export default function RegisterPage() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", email: "", password: "", confirmPassword: "" });
@@ -27,7 +29,7 @@ export default function RegisterPage() {
       if (!res.ok) {
         setError(data.message || "Registration failed.");
       } else {
-        router.push("/login?registered=1");
+        router.push("/auth/login?registered=1");
       }
     } catch {
       setError("Something went wrong. Please try again.");
@@ -37,10 +39,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-56px)] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black px-4">
+    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-amber-400 mb-2">My Ukoo</h1>
+          <Link href="/" className="inline-block mb-4">
+            <Logo priority variant="wordmark" />
+          </Link>
           <p className="text-stone-400">Start building your family legacy</p>
         </div>
         <div className="bg-stone-800/80 backdrop-blur border border-stone-700 rounded-2xl p-8 shadow-2xl">
@@ -106,7 +110,7 @@ export default function RegisterPage() {
           </form>
           <p className="mt-6 text-center text-stone-400 text-sm">
             Already have an account?{" "}
-            <Link href="/login" className="text-amber-400 hover:text-amber-300 font-medium">
+            <Link href="/auth/login" className="text-amber-400 hover:text-amber-300 font-medium">
               Sign in
             </Link>
           </p>

@@ -1,4 +1,12 @@
+import { LOGOS, absolutePublicUrl } from "@/src/config/logos";
+
 export const baseTemplate = (body: string, email: string): string => {
+  const logoUrl = absolutePublicUrl(LOGOS.wordmark);
+  const headerBrand =
+    logoUrl.length > 0
+      ? `<img src="${logoUrl}" alt="My Ukoo" width="200" style="max-width:200px;height:auto;padding:12px 0;display:block;margin:0 auto;" />`
+      : `<p style="font-size: 32px; color: white; margin: 0; letter-spacing: 0.05em;">MY UKOO</p>`;
+
   return `
 <!DOCTYPE html>
 <html lang="en">
@@ -42,9 +50,8 @@ export const baseTemplate = (body: string, email: string): string => {
                 <!-- Header -->
                 <tr>
                     <td class="header element-padding-x"
-                        style="display: flex; background-color: #215563; flex-direction: column; align-items: center; padding: 0 10px 0 0; text-align: center; font-size: 24px; ">
-<!--                        <img width="200px" style=" padding: 8px 2px; border-radius: 6px;"  src="https://chama-smart.web.app/assets/images/logo-mail.png" alt="Logo"/>-->
-                        <p style="font-size: 40px; color: white">MY UKOO</p>
+                        style="background-color: #215563; padding: 16px 20px; text-align: center;">
+                        ${headerBrand}
                     </td>
                 </tr>
 

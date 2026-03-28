@@ -1,10 +1,14 @@
 "use client";
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function LoginPage() {
+import { Logo } from "@/src/components/icons";
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const justRegistered = searchParams.get("registered") === "1";
   const [form, setForm] = useState({ email: "", password: "" });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,14 +37,21 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-[calc(100vh-56px)] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black px-4">
+    <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black px-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-amber-400 mb-2">My Ukoo</h1>
+          <Link href="/" className="inline-block mb-4">
+            <Logo priority variant="wordmark" />
+          </Link>
           <p className="text-stone-400">Sign in to your family tree</p>
         </div>
         <div className="bg-stone-800/80 backdrop-blur border border-stone-700 rounded-2xl p-8 shadow-2xl">
           <h2 className="text-2xl font-semibold text-white mb-6">Welcome Back</h2>
+          {justRegistered && (
+            <div className="mb-4 p-3 bg-emerald-900/30 border border-emerald-700 rounded-lg text-emerald-200 text-sm">
+              Account created. Sign in with your email and password.
+            </div>
+          )}
           {error && (
             <div className="mb-4 p-3 bg-red-900/40 border border-red-700 rounded-lg text-red-300 text-sm">
               {error}
@@ -79,12 +90,26 @@ export default function LoginPage() {
           </form>
           <p className="mt-6 text-center text-stone-400 text-sm">
             No account?{" "}
-            <Link href="/register" className="text-amber-400 hover:text-amber-300 font-medium">
+            <Link href="/auth/register" className="text-amber-400 hover:text-amber-300 font-medium">
               Register here
             </Link>
           </p>
         </div>
       </div>
     </div>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-[100vh] flex items-center justify-center bg-gradient-to-br from-amber-950 via-stone-900 to-black text-stone-400">
+          Loading…
+        </div>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

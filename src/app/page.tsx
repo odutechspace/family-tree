@@ -1,6 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
+import { Logo } from "@/src/components/icons";
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-stone-950 text-white overflow-x-hidden">
@@ -12,6 +14,9 @@ export default function Home() {
         </div>
 
         <div className="relative z-10 flex flex-col items-center text-center max-w-3xl px-4 pt-16">
+          <div className="mb-6 drop-shadow-lg">
+            <Logo priority variant="wordmark" />
+          </div>
           <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-amber-900/30 border border-amber-700/50 rounded-full text-amber-400 text-sm font-medium mb-8">
             🌍 Built for African families
           </div>
@@ -30,11 +35,11 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4">
-            <Link href="/register"
+            <Link href="/auth/register"
               className="px-8 py-4 bg-amber-600 hover:bg-amber-500 text-white text-lg font-semibold rounded-xl transition shadow-lg shadow-amber-900/30">
               Start Your Family Tree
             </Link>
-            <Link href="/login"
+            <Link href="/auth/login"
               className="px-8 py-4 bg-stone-800 hover:bg-stone-700 border border-stone-700 text-white text-lg font-medium rounded-xl transition">
               Sign In
             </Link>
@@ -86,7 +91,7 @@ export default function Home() {
       <section className="py-20 px-4 text-center">
         <h2 className="text-3xl font-bold text-amber-400 mb-4">Your Roots Are Waiting</h2>
         <p className="text-stone-400 mb-8 max-w-xl mx-auto">Every story deserves to be remembered. Start preserving your family's history today.</p>
-        <Link href="/register" className="px-10 py-4 bg-amber-600 hover:bg-amber-500 text-white text-lg font-semibold rounded-xl transition">
+        <Link href="/auth/register" className="px-10 py-4 bg-amber-600 hover:bg-amber-500 text-white text-lg font-semibold rounded-xl transition">
           Begin for Free →
         </Link>
       </section>

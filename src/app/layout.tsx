@@ -5,6 +5,7 @@ import clsx from "clsx";
 import { Providers } from "./providers";
 import { siteConfig } from "@/src/config/site";
 import { fontSans } from "@/src/config/fonts";
+import { LOGOS } from "@/src/config/logos";
 import { Navbar } from "@/src/components/navbar";
 
 export const metadata: Metadata = {
@@ -14,7 +15,8 @@ export const metadata: Metadata = {
   },
   description: siteConfig.description,
   icons: {
-    icon: "/favicon.ico",
+    icon: [{ url: LOGOS.icon, type: "image/png" }],
+    apple: LOGOS.icon,
   },
 };
 

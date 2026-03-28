@@ -1,16 +1,54 @@
 import * as React from "react";
 import Image from "next/image";
 
+import { LOGOS } from "@/src/config/logos";
 import { IconSvgProps } from "../types";
 
-export const Logo: React.FC<any> = ({ size = 36, width, height, ...props }) => (
-  <Image
-    alt={"logo"}
-    height={height || size}
-    src={"/logos/uk-icon-logo-wt.png"}
-    width={width || size}
-  />
-);
+type LogoProps = {
+  size?: number;
+  width?: number;
+  height?: number;
+  variant?: "onDark" | "default" | "wordmark";
+  className?: string;
+  priority?: boolean;
+};
+
+/** App mark or wordmark from /public/logos */
+export const Logo: React.FC<LogoProps> = ({
+  size = 36,
+  width,
+  height,
+  variant = "onDark",
+  className,
+  priority,
+}) => {
+  if (variant === "wordmark") {
+    const h = height ?? 52;
+    const w = width ?? 220;
+    return (
+      <Image
+        alt="My Ukoo"
+        className={className ?? "mx-auto h-[52px] w-auto max-w-[240px] object-contain object-center"}
+        height={h}
+        priority={priority}
+        src={LOGOS.wordmark}
+        width={w}
+      />
+    );
+  }
+  const src = variant === "onDark" ? LOGOS.iconOnDark : LOGOS.icon;
+  const s = size;
+  return (
+    <Image
+      alt="My Ukoo"
+      className={className}
+      height={height ?? s}
+      priority={priority}
+      src={src}
+      width={width ?? s}
+    />
+  );
+};
 
 export const DiscordIcon: React.FC<IconSvgProps> = ({
   size = 24,

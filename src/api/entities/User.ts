@@ -24,10 +24,10 @@ export class User {
   @Column({ type: "enum", enum: UserRole, default: UserRole.USER })
   role: UserRole;
 
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 2048, nullable: true })
   profilePhotoUrl: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: "int", nullable: true })
   linkedPersonId: number | null;
 
   @CreateDateColumn()
