@@ -21,42 +21,66 @@ export interface PersonNodeData {
 function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
   const initials = `${data.firstName?.[0] || ""}${data.lastName?.[0] || ""}`;
   const isDeceased = data.aliveStatus === "deceased";
-  const genderColor = data.gender === "male" ? "border-blue-500" : data.gender === "female" ? "border-pink-500" : "border-stone-500";
-  const bgColor = data.gender === "male" ? "bg-blue-900/20" : data.gender === "female" ? "bg-pink-900/20" : "bg-stone-800";
+  const genderBorder =
+    data.gender === "male"
+      ? "border-blue-500 dark:border-blue-400"
+      : data.gender === "female"
+        ? "border-pink-500 dark:border-pink-400"
+        : "border-border";
+  const genderBg =
+    data.gender === "male"
+      ? "bg-blue-50 dark:bg-blue-950/30"
+      : data.gender === "female"
+        ? "bg-pink-50 dark:bg-pink-950/30"
+        : "bg-muted";
+
+  const avatarInner =
+    data.gender === "male"
+      ? "bg-blue-200 text-blue-950 dark:bg-blue-950 dark:text-blue-200"
+      : data.gender === "female"
+        ? "bg-pink-200 text-pink-950 dark:bg-pink-950 dark:text-pink-200"
+        : "bg-muted-foreground/20 text-foreground";
 
   return (
-    <div className={`relative rounded-xl border-2 ${genderColor} ${bgColor} ${selected ? "ring-2 ring-amber-400" : ""} ${data.isRoot ? "ring-2 ring-amber-500" : ""} shadow-lg w-36 cursor-pointer transition-all hover:scale-105`}>
-      <Handle type="target" position={Position.Top} className="!bg-amber-500 !w-3 !h-3" />
+    <div
+      className={`relative w-36 cursor-pointer rounded-xl border-2 shadow-lg transition-all hover:scale-105 ${genderBorder} ${genderBg} ${selected ? "ring-2 ring-primary" : ""} ${data.isRoot ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}
+    >
+      <Handle type="target" position={Position.Top} className="!h-3 !w-3 !bg-primary" />
 
-      <Link href={`/persons/${data.id}`} className="block p-3 no-underline" onClick={e => e.stopPropagation()}>
+      <Link href={`/persons/${data.id}`} className="block p-3 no-underline" onClick={(e) => e.stopPropagation()}>
         <div className="flex flex-col items-center gap-2">
-          <div className={`w-12 h-12 rounded-full overflow-hidden flex items-center justify-center text-lg font-bold border-2 ${genderColor} ${isDeceased ? "opacity-60 grayscale" : ""}`}
-            style={{ background: data.gender === "male" ? "#1e3a5f" : data.gender === "female" ? "#5f1e3a" : "#2a2a2a" }}>
+          <div
+            className={`flex h-12 w-12 items-center justify-center overflow-hidden rounded-full border-2 ${genderBorder} ${isDeceased ? "opacity-60 grayscale" : ""} ${avatarInner}`}
+          >
             {data.photoUrl ? (
-              <img src={data.photoUrl} alt="" className="w-full h-full object-cover" />
+              <img src={data.photoUrl} alt="" className="h-full w-full object-cover" />
             ) : (
-              <span className="text-amber-400">{initials || "?"}</span>
+              <span className="text-lg font-bold">{initials || "?"}</span>
             )}
           </div>
           <div className="text-center">
-            <p className={`text-xs font-semibold leading-tight ${isDeceased ? "text-stone-400" : "text-white"}`}>
+            <p className={`text-xs font-semibold leading-tight ${isDeceased ? "text-muted-foreground" : "text-foreground"}`}>
               {data.firstName} {data.lastName}
             </p>
-            {data.nickname && <p className="text-amber-400/70 text-xs">"{data.nickname}"</p>}
+            {data.nickname && <p className="text-xs text-primary/80">&quot;{data.nickname}&quot;</p>}
             {data.unionOrder && data.unionOrder > 1 && (
-              <span className="text-xs text-amber-500">Wife #{data.unionOrder}</span>
+              <span className="text-xs text-primary">Wife #{data.unionOrder}</span>
             )}
-            <div className="flex justify-center gap-1 mt-1 flex-wrap">
+            <div className="mt-1 flex flex-wrap justify-center gap-1">
               {data.birthDate && (
-                <span className="text-stone-500 text-xs">{new Date(data.birthDate).getFullYear()}</span>
+                <span className="text-xs text-muted-foreground">{new Date(data.birthDate).getFullYear()}</span>
               )}
-              {isDeceased && <span className="text-stone-500 text-xs">†{data.deathDate ? new Date(data.deathDate).getFullYear() : ""}</span>}
+              {isDeceased && (
+                <span className="text-xs text-muted-foreground">
+                  †{data.deathDate ? new Date(data.deathDate).getFullYear() : ""}
+                </span>
+              )}
             </div>
           </div>
         </div>
       </Link>
 
-      <Handle type="source" position={Position.Bottom} className="!bg-amber-500 !w-3 !h-3" />
+      <Handle type="source" position={Position.Bottom} className="!h-3 !w-3 !bg-primary" />
     </div>
   );
 }

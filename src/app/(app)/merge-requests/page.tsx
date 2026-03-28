@@ -1,7 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
+
 import { useAuth } from "@/src/hooks/useAuth";
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
+import { Textarea } from "@/src/components/ui/textarea";
 
 interface MergeRequest {
   id: number;
@@ -17,11 +21,13 @@ interface MergeRequest {
   createdAt: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  pending: "bg-yellow-900/40 text-yellow-400 border-yellow-700",
-  approved: "bg-green-900/40 text-green-400 border-green-700",
-  rejected: "bg-red-900/40 text-red-400 border-red-700",
-  cancelled: "bg-stone-700 text-stone-400",
+const STATUS_STYLES: Record<string, string> = {
+  pending:
+    "border-amber-200 bg-amber-100 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300",
+  approved:
+    "border-emerald-200 bg-emerald-100 text-emerald-900 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400",
+  rejected: "border-red-200 bg-red-100 text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-400",
+  cancelled: "border-border bg-muted text-muted-foreground",
 };
 
 export default function MergeRequestsPage() {
@@ -40,77 +46,93 @@ export default function MergeRequestsPage() {
     setLoading(false);
   };
 
-  useEffect(() => { if (user !== undefined) fetchRequests(); }, [user]);
+  useEffect(() => {
+    if (user !== undefined) fetchRequests();
+  }, [user]);
 
-  const filtered = statusFilter === "all" ? requests : requests.filter(r => r.status === statusFilter);
+  const filtered = statusFilter === "all" ? requests : requests.filter((r) => r.status === statusFilter);
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-background px-4 py-8 text-foreground">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-amber-400">Merge Requests</h1>
-            <p className="text-stone-400 mt-1">Propose and manage family history merges</p>
+            <h1 className="text-3xl font-bold text-primary">Merge Requests</h1>
+            <p className="mt-1 text-muted-foreground">Propose and manage family history merges</p>
           </div>
-          <Link href="/merge-requests/new" className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg transition">
-            + New Merge Request
-          </Link>
+          <Button asChild size="lg">
+            <Link href="/merge-requests/new">+ New Merge Request</Link>
+          </Button>
         </div>
 
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {["all", "pending", "approved", "rejected"].map(s => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition capitalize ${statusFilter === s ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:text-white"}`}>
+        <div className="mb-6 flex flex-wrap gap-2">
+          {["all", "pending", "approved", "rejected"].map((s) => (
+            <Button
+              key={s}
+              type="button"
+              variant={statusFilter === s ? "default" : "secondary"}
+              size="sm"
+              className="capitalize"
+              onClick={() => setStatusFilter(s)}
+            >
               {s}
-            </button>
+            </Button>
           ))}
         </div>
 
         {loading ? (
           <div className="space-y-3">
-            {Array.from({ length: 4 }).map((_, i) => <div key={i} className="bg-stone-800 rounded-xl h-24 animate-pulse" />)}
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="h-24 animate-pulse rounded-xl bg-muted" />
+            ))}
           </div>
         ) : filtered.length === 0 ? (
-          <div className="text-center py-16 text-stone-400">
-            <p className="text-4xl mb-3">🔗</p>
-            <p className="text-lg mb-2">No merge requests found</p>
-            <Link href="/merge-requests/new" className="text-amber-400 hover:text-amber-300">Create one →</Link>
+          <div className="py-16 text-center text-muted-foreground">
+            <p className="mb-3 text-4xl">🔗</p>
+            <p className="mb-2 text-lg">No merge requests found</p>
+            <Button variant="link" asChild className="text-primary">
+              <Link href="/merge-requests/new">Create one →</Link>
+            </Button>
           </div>
         ) : (
           <div className="space-y-3">
-            {filtered.map(mr => (
-              <div key={mr.id} className="bg-stone-800 border border-stone-700 rounded-xl p-5">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className={`text-xs px-2 py-0.5 rounded-full border ${STATUS_COLORS[mr.status] || "bg-stone-700 text-stone-400"}`}>
-                        {mr.status}
-                      </span>
-                      <span className="text-xs text-stone-500">
-                        {mr.type === "duplicate_person" ? "👤 Duplicate Person" : "🌳 Family Trees"}
-                      </span>
+            {filtered.map((mr) => (
+              <Card key={mr.id}>
+                <CardContent className="p-5">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="mb-2 flex items-center gap-2">
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-xs ${STATUS_STYLES[mr.status] || "border-border bg-muted text-muted-foreground"}`}
+                        >
+                          {mr.status}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {mr.type === "duplicate_person" ? "👤 Duplicate Person" : "🌳 Family Trees"}
+                        </span>
+                      </div>
+
+                      {mr.type === "duplicate_person" && (
+                        <p className="text-sm text-foreground">
+                          Merge Person #{mr.sourcePersonId} into Person #{mr.targetPersonId}
+                        </p>
+                      )}
+                      {mr.type === "family_trees" && (
+                        <p className="text-sm text-foreground">
+                          Merge Tree #{mr.sourceTreeId} into Tree #{mr.targetTreeId}
+                        </p>
+                      )}
+
+                      {mr.reason && <p className="mt-1 text-sm italic text-muted-foreground">&quot;{mr.reason}&quot;</p>}
+                      <p className="mt-2 text-xs text-muted-foreground">{new Date(mr.createdAt).toLocaleDateString()}</p>
                     </div>
 
-                    {mr.type === "duplicate_person" && (
-                      <p className="text-stone-300 text-sm">
-                        Merge Person #{mr.sourcePersonId} into Person #{mr.targetPersonId}
-                      </p>
+                    {user?.role === "admin" && mr.status === "pending" && (
+                      <ReviewButtons mergeRequestId={mr.id} onReviewed={fetchRequests} />
                     )}
-                    {mr.type === "family_trees" && (
-                      <p className="text-stone-300 text-sm">
-                        Merge Tree #{mr.sourceTreeId} into Tree #{mr.targetTreeId}
-                      </p>
-                    )}
-
-                    {mr.reason && <p className="text-stone-400 text-sm mt-1 italic">"{mr.reason}"</p>}
-                    <p className="text-stone-500 text-xs mt-2">{new Date(mr.createdAt).toLocaleDateString()}</p>
                   </div>
-
-                  {user?.role === "admin" && mr.status === "pending" && (
-                    <ReviewButtons mergeRequestId={mr.id} onReviewed={fetchRequests} />
-                  )}
-                </div>
-              </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         )}
@@ -119,7 +141,7 @@ export default function MergeRequestsPage() {
   );
 }
 
-function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number; onReviewed: () => void; }) {
+function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number; onReviewed: () => void }) {
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
@@ -139,15 +161,28 @@ function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number;
 
   if (showNotes) {
     return (
-      <div className="flex flex-col gap-2 min-w-48">
-        <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder="Review notes (optional)..."
-          className="px-2 py-1.5 bg-stone-700 border border-stone-600 rounded text-white text-xs resize-none focus:outline-none focus:border-amber-500" />
+      <div className="flex min-w-48 flex-col gap-2">
+        <Textarea
+          rows={2}
+          value={notes}
+          onChange={(e) => setNotes(e.target.value)}
+          placeholder="Review notes (optional)..."
+          className="text-xs"
+        />
         <div className="flex gap-2">
-          <button onClick={() => submit(pendingDecision!)} disabled={loading}
-            className={`flex-1 py-1 text-xs font-medium rounded transition ${pendingDecision === "approved" ? "bg-green-700 hover:bg-green-600 text-white" : "bg-red-900 hover:bg-red-800 text-white"}`}>
+          <Button
+            type="button"
+            size="sm"
+            variant={pendingDecision === "approved" ? "default" : "destructive"}
+            className="flex-1 text-xs"
+            onClick={() => submit(pendingDecision!)}
+            disabled={loading}
+          >
             Confirm {pendingDecision}
-          </button>
-          <button onClick={() => setShowNotes(false)} className="px-2 py-1 text-xs bg-stone-700 text-stone-400 rounded">Cancel</button>
+          </Button>
+          <Button type="button" size="sm" variant="secondary" className="text-xs" onClick={() => setShowNotes(false)}>
+            Cancel
+          </Button>
         </div>
       </div>
     );
@@ -155,14 +190,23 @@ function ReviewButtons({ mergeRequestId, onReviewed }: { mergeRequestId: number;
 
   return (
     <div className="flex flex-col gap-2">
-      <button onClick={() => { setPendingDecision("approved"); setShowNotes(true); }}
-        className="px-3 py-1.5 bg-green-800 hover:bg-green-700 text-green-300 text-xs font-medium rounded-lg transition">
+      <Button
+        type="button"
+        size="sm"
+        className="bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-800 dark:hover:bg-emerald-700"
+        onClick={() => {
+          setPendingDecision("approved");
+          setShowNotes(true);
+        }}
+      >
         ✓ Approve
-      </button>
-      <button onClick={() => { setPendingDecision("rejected"); setShowNotes(true); }}
-        className="px-3 py-1.5 bg-red-900/50 hover:bg-red-900 text-red-400 text-xs font-medium rounded-lg transition">
+      </Button>
+      <Button type="button" size="sm" variant="destructive" onClick={() => {
+        setPendingDecision("rejected");
+        setShowNotes(true);
+      }}>
         ✗ Reject
-      </button>
+      </Button>
     </div>
   );
 }

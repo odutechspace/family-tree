@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useAuth } from "@/src/hooks/useAuth";
+
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
 
 interface FamilyTree {
   id: number;
@@ -13,7 +15,6 @@ interface FamilyTree {
 }
 
 export default function TreesPage() {
-  const { user } = useAuth();
   const [trees, setTrees] = useState<FamilyTree[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"mine" | "public">("mine");
@@ -27,56 +28,75 @@ export default function TreesPage() {
     setLoading(false);
   };
 
-  useEffect(() => { fetchTrees(tab); }, [tab]);
+  useEffect(() => {
+    fetchTrees(tab);
+  }, [tab]);
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white py-8 px-4">
-      <div className="max-w-5xl mx-auto">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-background px-4 py-8 text-foreground">
+      <div className="mx-auto max-w-5xl">
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-amber-400">Family Trees</h1>
-            <p className="text-stone-400 mt-1">Visualize and manage your family lineages</p>
+            <h1 className="text-3xl font-bold text-primary">Family Trees</h1>
+            <p className="mt-1 text-muted-foreground">Visualize and manage your family lineages</p>
           </div>
-          <Link href="/trees/new" className="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg transition">
-            + New Tree
-          </Link>
+          <Button asChild size="lg">
+            <Link href="/trees/new">+ New Tree</Link>
+          </Button>
         </div>
 
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setTab("mine")} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === "mine" ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:text-white"}`}>
+        <div className="mb-6 flex gap-2">
+          <Button type="button" variant={tab === "mine" ? "default" : "secondary"} size="sm" onClick={() => setTab("mine")}>
             My Trees
-          </button>
-          <button onClick={() => setTab("public")} className={`px-4 py-2 rounded-lg text-sm font-medium transition ${tab === "public" ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:text-white"}`}>
+          </Button>
+          <Button type="button" variant={tab === "public" ? "default" : "secondary"} size="sm" onClick={() => setTab("public")}>
             Public Trees
-          </button>
+          </Button>
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, i) => <div key={i} className="bg-stone-800 rounded-xl h-40 animate-pulse" />)}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="h-40 animate-pulse rounded-xl bg-muted" />
+            ))}
           </div>
         ) : trees.length === 0 ? (
-          <div className="text-center py-16 text-stone-400">
-            <p className="text-5xl mb-4">🌳</p>
-            <p className="text-lg mb-2">{tab === "mine" ? "You have no trees yet" : "No public trees yet"}</p>
-            <Link href="/trees/new" className="text-amber-400 hover:text-amber-300">Create your first family tree →</Link>
+          <div className="py-16 text-center text-muted-foreground">
+            <p className="mb-4 text-5xl">🌳</p>
+            <p className="mb-2 text-lg">{tab === "mine" ? "You have no trees yet" : "No public trees yet"}</p>
+            <Button variant="link" asChild className="text-primary">
+              <Link href="/trees/new">Create your first family tree →</Link>
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {trees.map(tree => (
-              <Link key={tree.id} href={`/trees/${tree.id}`}
-                className="bg-stone-800 border border-stone-700 hover:border-amber-500/50 rounded-xl p-5 transition group flex flex-col gap-3">
-                <div className="flex items-start justify-between">
-                  <div className="w-10 h-10 rounded-lg bg-amber-900/30 flex items-center justify-center text-xl">🌳</div>
-                  <span className={`text-xs px-2 py-0.5 rounded-full ${tree.visibility === "public" ? "bg-green-900/40 text-green-400" : tree.visibility === "family_only" ? "bg-blue-900/40 text-blue-400" : "bg-stone-700 text-stone-400"}`}>
-                    {tree.visibility.replace("_", " ")}
-                  </span>
-                </div>
-                <div>
-                  <h3 className="font-semibold text-white group-hover:text-amber-400 transition">{tree.name}</h3>
-                  {tree.description && <p className="text-stone-400 text-sm mt-1 line-clamp-2">{tree.description}</p>}
-                </div>
-                <p className="text-stone-500 text-xs mt-auto">{new Date(tree.createdAt).toLocaleDateString()}</p>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
+            {trees.map((tree) => (
+              <Link key={tree.id} href={`/trees/${tree.id}`} className="group block">
+                <Card className="h-full border-border transition-colors hover:border-primary/40">
+                  <CardContent className="flex flex-col gap-3 p-5">
+                    <div className="flex items-start justify-between">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-xl">🌳</div>
+                      <span
+                        className={`rounded-full px-2 py-0.5 text-xs ${
+                          tree.visibility === "public"
+                            ? "border border-emerald-200 bg-emerald-100 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400"
+                            : tree.visibility === "family_only"
+                              ? "border border-blue-200 bg-blue-100 text-blue-800 dark:border-blue-800 dark:bg-blue-950/40 dark:text-blue-400"
+                              : "bg-muted text-muted-foreground"
+                        }`}
+                      >
+                        {tree.visibility.replace("_", " ")}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-foreground transition-colors group-hover:text-primary">{tree.name}</h3>
+                      {tree.description && (
+                        <p className="mt-1 line-clamp-2 text-sm text-muted-foreground">{tree.description}</p>
+                      )}
+                    </div>
+                    <p className="mt-auto text-xs text-muted-foreground">{new Date(tree.createdAt).toLocaleDateString()}</p>
+                  </CardContent>
+                </Card>
               </Link>
             ))}
           </div>

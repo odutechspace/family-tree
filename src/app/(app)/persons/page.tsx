@@ -2,6 +2,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent } from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
+
 interface Person {
   id: number;
   firstName: string;
@@ -14,6 +18,12 @@ interface Person {
   photoUrl?: string;
   tribeEthnicity?: string;
   originCountry?: string;
+}
+
+function genderChipClass(gender: string) {
+  if (gender === "male") return "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300";
+  if (gender === "female") return "bg-pink-100 text-pink-800 dark:bg-pink-950/50 dark:text-pink-300";
+  return "bg-muted text-muted-foreground";
 }
 
 export default function PersonsPage() {
@@ -36,75 +46,72 @@ export default function PersonsPage() {
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => { fetchPersons(); }, []);
+  useEffect(() => {
+    fetchPersons();
+  }, []);
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
+    <div className="min-h-screen bg-background text-foreground">
+      <div className="mx-auto max-w-6xl px-4 py-8">
+        <div className="mb-8 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold text-amber-400">People Directory</h1>
-            <p className="text-stone-400 mt-1">{total} people in the database</p>
+            <h1 className="text-3xl font-bold text-primary">People Directory</h1>
+            <p className="mt-1 text-muted-foreground">{total} people in the database</p>
           </div>
-          <Link
-            href="/persons/new"
-            className="flex items-center gap-2 px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-lg transition"
-          >
-            + Add Person
-          </Link>
+          <Button asChild size="lg">
+            <Link href="/persons/new">+ Add Person</Link>
+          </Button>
         </div>
 
-        <input
+        <Input
           type="text"
           placeholder="Search by name..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full px-4 py-3 mb-6 bg-stone-800 border border-stone-700 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500 transition"
+          className="mb-6 h-11"
         />
 
         {loading ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="bg-stone-800 rounded-xl h-48 animate-pulse" />
+              <div key={i} className="h-48 animate-pulse rounded-xl bg-muted" />
             ))}
           </div>
         ) : persons.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="text-stone-400 text-lg mb-4">No people found</p>
-            <Link href="/persons/new" className="text-amber-400 hover:text-amber-300">
-              Add the first person →
-            </Link>
+          <div className="py-16 text-center">
+            <p className="mb-4 text-lg text-muted-foreground">No people found</p>
+            <Button variant="link" asChild className="text-primary">
+              <Link href="/persons/new">Add the first person →</Link>
+            </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4">
             {persons.map((p) => (
-              <Link
-                key={p.id}
-                href={`/persons/${p.id}`}
-                className="bg-stone-800 border border-stone-700 hover:border-amber-500/50 rounded-xl p-4 flex flex-col items-center gap-3 transition group"
-              >
-                <div className="w-16 h-16 rounded-full overflow-hidden bg-stone-700 flex items-center justify-center text-2xl font-bold text-amber-400">
-                  {p.photoUrl ? (
-                    <img src={p.photoUrl} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    `${p.firstName[0]}${p.lastName[0]}`
-                  )}
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold text-white group-hover:text-amber-400 transition leading-tight">
-                    {p.firstName} {p.lastName}
-                  </p>
-                  {p.nickname && <p className="text-stone-400 text-xs mt-0.5">"{p.nickname}"</p>}
-                  <div className="flex flex-wrap gap-1 justify-center mt-2">
-                    <span className={`text-xs px-2 py-0.5 rounded-full ${p.gender === "male" ? "bg-blue-900/50 text-blue-300" : p.gender === "female" ? "bg-pink-900/50 text-pink-300" : "bg-stone-700 text-stone-400"}`}>
-                      {p.gender}
-                    </span>
-                    {p.aliveStatus === "deceased" && (
-                      <span className="text-xs px-2 py-0.5 rounded-full bg-stone-700 text-stone-400">†</span>
-                    )}
-                  </div>
-                  {p.tribeEthnicity && <p className="text-stone-500 text-xs mt-1">{p.tribeEthnicity}</p>}
-                </div>
+              <Link key={p.id} href={`/persons/${p.id}`} className="group block">
+                <Card className="h-full border-border transition-colors hover:border-primary/40">
+                  <CardContent className="flex flex-col items-center gap-3 p-4">
+                    <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full bg-muted text-2xl font-bold text-primary">
+                      {p.photoUrl ? (
+                        <img src={p.photoUrl} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        `${p.firstName[0]}${p.lastName[0]}`
+                      )}
+                    </div>
+                    <div className="text-center">
+                      <p className="font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+                        {p.firstName} {p.lastName}
+                      </p>
+                      {p.nickname && <p className="mt-0.5 text-xs text-muted-foreground">&quot;{p.nickname}&quot;</p>}
+                      <div className="mt-2 flex flex-wrap justify-center gap-1">
+                        <span className={`rounded-full px-2 py-0.5 text-xs ${genderChipClass(p.gender)}`}>{p.gender}</span>
+                        {p.aliveStatus === "deceased" && (
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">†</span>
+                        )}
+                      </div>
+                      {p.tribeEthnicity && <p className="mt-1 text-xs text-muted-foreground">{p.tribeEthnicity}</p>}
+                    </div>
+                  </CardContent>
+                </Card>
               </Link>
             ))}
           </div>

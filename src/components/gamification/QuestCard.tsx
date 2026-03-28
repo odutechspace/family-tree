@@ -1,16 +1,18 @@
 "use client";
 
 const TYPE_STYLES: Record<string, string> = {
-  onboarding: "border-green-700/50 bg-green-900/10",
-  daily:      "border-blue-700/50 bg-blue-900/10",
-  weekly:     "border-purple-700/50 bg-purple-900/10",
-  discovery:  "border-amber-700/50 bg-amber-900/10",
+  onboarding:
+    "border-green-300 bg-green-50/90 dark:border-green-700/50 dark:bg-green-950/20",
+  daily: "border-blue-300 bg-blue-50/90 dark:border-blue-700/50 dark:bg-blue-950/20",
+  weekly: "border-purple-300 bg-purple-50/90 dark:border-purple-700/50 dark:bg-purple-950/20",
+  discovery: "border-amber-300 bg-amber-50/90 dark:border-amber-700/50 dark:bg-amber-950/20",
 };
+
 const TYPE_BADGE: Record<string, string> = {
-  onboarding: "bg-green-900/50 text-green-400",
-  daily:      "bg-blue-900/50 text-blue-400",
-  weekly:     "bg-purple-900/50 text-purple-400",
-  discovery:  "bg-amber-900/50 text-amber-400",
+  onboarding: "bg-green-200 text-green-900 dark:bg-green-900/50 dark:text-green-300",
+  daily: "bg-blue-200 text-blue-900 dark:bg-blue-900/50 dark:text-blue-300",
+  weekly: "bg-purple-200 text-purple-900 dark:bg-purple-900/50 dark:text-purple-300",
+  discovery: "bg-amber-200 text-amber-900 dark:bg-amber-900/50 dark:text-amber-300",
 };
 
 interface Props {
@@ -24,35 +26,54 @@ interface Props {
   isCompleted: boolean;
 }
 
-export default function QuestCard({ icon, title, description, type, targetCount, xpReward, progress, isCompleted }: Props) {
+export default function QuestCard({
+  icon,
+  title,
+  description,
+  type,
+  targetCount,
+  xpReward,
+  progress,
+  isCompleted,
+}: Props) {
   const pct = Math.min(Math.floor((progress / targetCount) * 100), 100);
-  const cardStyle = TYPE_STYLES[type] || "border-stone-700 bg-stone-800";
-  const badgeStyle = TYPE_BADGE[type] || "bg-stone-700 text-stone-400";
+  const cardStyle = TYPE_STYLES[type] || "border-border bg-card";
+  const badgeStyle = TYPE_BADGE[type] || "bg-muted text-muted-foreground";
 
   return (
-    <div className={`border rounded-xl p-4 transition ${cardStyle} ${isCompleted ? "opacity-60" : ""}`}>
+    <div className={`rounded-xl border p-4 transition ${cardStyle} ${isCompleted ? "opacity-70" : ""}`}>
       <div className="flex items-start gap-3">
-        <div className="text-2xl mt-0.5">{icon}</div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1 flex-wrap">
-            <p className={`font-semibold text-sm ${isCompleted ? "text-stone-400 line-through" : "text-white"}`}>{title}</p>
-            <span className={`text-xs px-1.5 py-0.5 rounded-full capitalize ${badgeStyle}`}>{type}</span>
-            {isCompleted && <span className="text-xs text-green-400">✓ Done</span>}
+        <div className="mt-0.5 text-2xl">{icon}</div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <p
+              className={`text-sm font-semibold ${isCompleted ? "text-muted-foreground line-through" : "text-foreground"}`}
+            >
+              {title}
+            </p>
+            <span className={`rounded-full px-1.5 py-0.5 text-xs capitalize ${badgeStyle}`}>{type}</span>
+            {isCompleted && <span className="text-xs font-medium text-emerald-600 dark:text-green-400">✓ Done</span>}
           </div>
-          <p className="text-stone-400 text-xs mb-2 leading-relaxed">{description}</p>
+          <p className="mb-2 text-xs leading-relaxed text-muted-foreground">{description}</p>
 
           {!isCompleted && (
             <div className="space-y-1">
-              <div className="flex justify-between items-center">
-                <span className="text-stone-500 text-xs">{progress}/{targetCount}</span>
-                <span className="text-amber-400 text-xs font-medium">+{xpReward} XP</span>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">
+                  {progress}/{targetCount}
+                </span>
+                <span className="text-xs font-medium text-amber-600 dark:text-amber-400">+{xpReward} XP</span>
               </div>
-              <div className="w-full h-2 bg-stone-700 rounded-full overflow-hidden">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className={`h-full rounded-full transition-all duration-500 ${
-                    type === "daily" ? "bg-blue-500" :
-                    type === "weekly" ? "bg-purple-500" :
-                    type === "discovery" ? "bg-amber-500" : "bg-green-500"
+                    type === "daily"
+                      ? "bg-blue-500"
+                      : type === "weekly"
+                        ? "bg-purple-500"
+                        : type === "discovery"
+                          ? "bg-amber-500"
+                          : "bg-emerald-500"
                   }`}
                   style={{ width: `${pct}%` }}
                 />
@@ -61,7 +82,7 @@ export default function QuestCard({ icon, title, description, type, targetCount,
           )}
 
           {isCompleted && (
-            <span className="text-xs text-amber-400 font-medium">+{xpReward} XP earned ✓</span>
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400">+{xpReward} XP earned ✓</span>
           )}
         </div>
       </div>

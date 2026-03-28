@@ -11,14 +11,17 @@ export interface CoupleNodeData {
 function CoupleNode({ data }: NodeProps<CoupleNodeData>) {
   return (
     <div className="relative flex items-center justify-center">
-      <Handle type="target" position={Position.Left} id="left" className="!bg-amber-500 !w-2 !h-2" />
-      <Handle type="target" position={Position.Right} id="right" className="!bg-amber-500 !w-2 !h-2" />
+      <Handle type="target" position={Position.Left} id="left" className="!h-2 !w-2 !bg-primary" />
+      <Handle type="target" position={Position.Right} id="right" className="!h-2 !w-2 !bg-primary" />
 
-      <div className="w-6 h-6 rounded-full bg-amber-600 border-2 border-amber-400 flex items-center justify-center shadow-lg" title={data.ceremonyType || "Union"}>
+      <div
+        className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-primary bg-primary text-primary-foreground shadow-lg"
+        title={data.ceremonyType || "Union"}
+      >
         <span className="text-xs">💍</span>
       </div>
 
-      <Handle type="source" position={Position.Bottom} className="!bg-amber-500 !w-2 !h-2" />
+      <Handle type="source" position={Position.Bottom} className="!h-2 !w-2 !bg-primary" />
     </div>
   );
 }

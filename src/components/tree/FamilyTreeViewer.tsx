@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState, useCallback } from "react";
+import { useTheme } from "next-themes";
 import ReactFlow, {
   Node, Edge, Background, Controls, MiniMap,
   useNodesState, useEdgesState, MarkerType, BackgroundVariant,
@@ -41,8 +42,10 @@ interface Props {
 }
 
 export default function FamilyTreeViewer({ persons, relationships, rootPersonId }: Props) {
+  const { resolvedTheme } = useTheme();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const isDark = resolvedTheme !== "light";
 
   const buildGraph = useCallback(() => {
     const personMap = new Map(persons.map(p => [p.id, p]));
@@ -145,23 +148,24 @@ export default function FamilyTreeViewer({ persons, relationships, rootPersonId 
         data: { ceremonyType: rel.ceremonyType, startDate: rel.startDate, unionOrder: rel.unionOrder },
       });
 
+      const unionStroke = "#49838F";
       newEdges.push(
         {
           id: `${coupleId}-a`,
           source: `person-${aId}`,
           target: coupleId,
           type: "smoothstep",
-          style: { stroke: "#d97706", strokeWidth: 2 },
-          markerEnd: { type: MarkerType.Arrow, color: "#d97706" },
+          style: { stroke: unionStroke, strokeWidth: 2 },
+          markerEnd: { type: MarkerType.Arrow, color: unionStroke },
         },
         {
           id: `${coupleId}-b`,
           source: `person-${bId}`,
           target: coupleId,
           type: "smoothstep",
-          style: { stroke: "#d97706", strokeWidth: 2 },
-          markerEnd: { type: MarkerType.Arrow, color: "#d97706" },
-        }
+          style: { stroke: unionStroke, strokeWidth: 2 },
+          markerEnd: { type: MarkerType.Arrow, color: unionStroke },
+        },
       );
     });
 
@@ -179,10 +183,10 @@ export default function FamilyTreeViewer({ persons, relationships, rootPersonId 
         source: sourceId,
         target: `person-${childId}`,
         type: "smoothstep",
-        style: { stroke: "#6b7280", strokeWidth: 1.5, strokeDasharray: r.type !== "parent_child" ? "5,5" : undefined },
+        style: { stroke: isDark ? "#78716c" : "#a8a29e", strokeWidth: 1.5, strokeDasharray: r.type !== "parent_child" ? "5,5" : undefined },
         label: r.type !== "parent_child" ? (r.type === "adopted" ? "adopted" : "step") : undefined,
-        labelStyle: { fontSize: 10, fill: "#9ca3af" },
-        markerEnd: { type: MarkerType.ArrowClosed, color: "#6b7280" },
+        labelStyle: { fontSize: 10, fill: isDark ? "#a8a29e" : "#78716c" },
+        markerEnd: { type: MarkerType.ArrowClosed, color: isDark ? "#78716c" : "#a8a29e" },
       });
     });
 
@@ -193,20 +197,23 @@ export default function FamilyTreeViewer({ persons, relationships, rootPersonId 
         source: `person-${r.personAId}`,
         target: `person-${r.personBId}`,
         type: "straight",
-        style: { stroke: "#92400e", strokeWidth: 1, strokeDasharray: "4,4" },
+        style: { stroke: isDark ? "#a16207" : "#b45309", strokeWidth: 1, strokeDasharray: "4,4" },
         label: r.type === "half_sibling" ? "half" : undefined,
-        labelStyle: { fontSize: 9, fill: "#92400e" },
+        labelStyle: { fontSize: 9, fill: isDark ? "#fbbf24" : "#92400e" },
       });
     });
 
     setNodes(newNodes);
     setEdges(newEdges);
-  }, [persons, relationships, rootPersonId]);
+  }, [persons, relationships, rootPersonId, isDark]);
 
   useEffect(() => { buildGraph(); }, [buildGraph]);
 
+  const dotColor = isDark ? "#44403c" : "#d6d3d1";
+  const minimapMask = isDark ? "rgba(0,0,0,0.65)" : "rgba(255,255,255,0.75)";
+
   return (
-    <div className="w-full h-full bg-stone-950 rounded-xl overflow-hidden">
+    <div className="h-full w-full overflow-hidden rounded-xl border border-border bg-muted/30">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -219,16 +226,18 @@ export default function FamilyTreeViewer({ persons, relationships, rootPersonId 
         maxZoom={2}
         attributionPosition="bottom-right"
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} color="#292524" />
-        <Controls className="!bg-stone-800 !border-stone-700 !shadow-lg" />
+        <Background variant={BackgroundVariant.Dots} gap={20} color={dotColor} />
+        <Controls className="!border-border !bg-card !shadow-md [&_button]:!border-border [&_button]:!bg-background [&_svg]:!fill-foreground" />
         <MiniMap
           nodeColor={(n) => {
-            if (n.type === "couple") return "#d97706";
+            if (n.type === "couple") return "#49838F";
             const data = n.data as PersonNodeData;
-            return data.gender === "male" ? "#1e40af" : data.gender === "female" ? "#9d174d" : "#44403c";
+            if (data.gender === "male") return isDark ? "#3b82f6" : "#2563eb";
+            if (data.gender === "female") return isDark ? "#ec4899" : "#db2777";
+            return isDark ? "#78716c" : "#a8a29e";
           }}
-          maskColor="rgba(0,0,0,0.7)"
-          className="!bg-stone-900 !border-stone-700"
+          maskColor={minimapMask}
+          className="!border-border !bg-card"
         />
       </ReactFlow>
     </div>

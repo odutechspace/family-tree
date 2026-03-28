@@ -1,7 +1,20 @@
 "use client";
 import { useEffect, useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import Link from "next/link";
+
+import { Button } from "@/src/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/src/components/ui/card";
+import { Input } from "@/src/components/ui/input";
+import { Label } from "@/src/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
+import { Textarea } from "@/src/components/ui/textarea";
 
 interface Relationship {
   id: number;
@@ -50,16 +63,26 @@ interface Person {
 }
 
 const EVENT_ICONS: Record<string, string> = {
-  birth: "👶", death: "✝️", naming_ceremony: "🌿", initiation: "🔥",
-  lobola: "🐄", bridewealth: "🐄", traditional_marriage: "💍",
-  church_marriage: "⛪", civil_marriage: "📜", graduation: "🎓",
-  education: "📚", migration: "✈️", achievement: "🏆", memorial: "🕯️",
-  burial: "⚱️", custom: "📌",
+  birth: "👶",
+  death: "✝️",
+  naming_ceremony: "🌿",
+  initiation: "🔥",
+  lobola: "🐄",
+  bridewealth: "🐄",
+  traditional_marriage: "💍",
+  church_marriage: "⛪",
+  civil_marriage: "📜",
+  graduation: "🎓",
+  education: "📚",
+  migration: "✈️",
+  achievement: "🏆",
+  memorial: "🕯️",
+  burial: "⚱️",
+  custom: "📌",
 };
 
 export default function PersonDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const router = useRouter();
   const [person, setPerson] = useState<Person | null>(null);
   const [relationships, setRelationships] = useState<Relationship[]>([]);
   const [lifeEvents, setLifeEvents] = useState<LifeEvent[]>([]);
@@ -80,10 +103,10 @@ export default function PersonDetailPage() {
   };
 
   const fetchRelatedPerson = async (personId: number) => {
-    if (relatedPersons.find(p => p.id === personId)) return;
+    if (relatedPersons.find((p) => p.id === personId)) return;
     const res = await fetch(`/api/persons/${personId}`);
     const data = await res.json();
-    if (res.ok) setRelatedPersons(prev => [...prev, data.data.person]);
+    if (res.ok) setRelatedPersons((prev) => [...prev, data.data.person]);
   };
 
   useEffect(() => {
@@ -91,7 +114,7 @@ export default function PersonDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    relationships.forEach(r => {
+    relationships.forEach((r) => {
       const otherId = r.personAId === Number(id) ? r.personBId : r.personAId;
       fetchRelatedPerson(otherId);
     });
@@ -99,7 +122,7 @@ export default function PersonDetailPage() {
 
   const getRelatedPerson = (rel: Relationship) => {
     const otherId = rel.personAId === Number(id) ? rel.personBId : rel.personAId;
-    return relatedPersons.find(p => p.id === otherId);
+    return relatedPersons.find((p) => p.id === otherId);
   };
 
   const relTypeLabel = (type: string, rel: Relationship) => {
@@ -119,145 +142,215 @@ export default function PersonDetailPage() {
     return labels[type] || type;
   };
 
-  if (loading) return <div className="min-h-screen bg-stone-950 flex items-center justify-center"><div className="text-stone-400">Loading...</div></div>;
-  if (!person) return <div className="min-h-screen bg-stone-950 flex items-center justify-center"><div className="text-red-400">Person not found.</div></div>;
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">Loading...</div>
+    );
+  }
+  if (!person) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background text-destructive">Person not found.</div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-stone-950 text-white py-8 px-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center gap-3 mb-8">
-          <Link href="/persons" className="text-stone-400 hover:text-white">← People</Link>
+    <div className="min-h-screen bg-background px-4 py-8 text-foreground">
+      <div className="mx-auto max-w-4xl">
+        <div className="mb-8 flex items-center gap-3">
+          <Button variant="ghost" size="sm" asChild>
+            <Link href="/persons">← People</Link>
+          </Button>
         </div>
 
-        {/* Header */}
-        <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 mb-6 flex flex-col sm:flex-row gap-6">
-          <div className="w-24 h-24 rounded-full overflow-hidden bg-stone-700 flex items-center justify-center text-3xl font-bold text-amber-400 flex-shrink-0">
-            {person.photoUrl ? <img src={person.photoUrl} alt="" className="w-full h-full object-cover" /> : `${person.firstName[0]}${person.lastName[0]}`}
-          </div>
-          <div className="flex-1">
-            <div className="flex flex-wrap items-start gap-2 mb-2">
-              <h1 className="text-2xl font-bold text-white">{person.firstName} {person.middleName} {person.lastName}</h1>
-              {person.isVerified && <span className="text-xs px-2 py-0.5 bg-green-900/50 text-green-400 rounded-full border border-green-700">✓ Verified</span>}
-              {person.aliveStatus === "deceased" && <span className="text-xs px-2 py-0.5 bg-stone-700 text-stone-400 rounded-full">†</span>}
+        <Card className="mb-6">
+          <CardContent className="flex flex-col gap-6 p-6 sm:flex-row">
+            <div className="flex h-24 w-24 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-muted text-3xl font-bold text-primary">
+              {person.photoUrl ? (
+                <img src={person.photoUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                `${person.firstName[0]}${person.lastName[0]}`
+              )}
             </div>
-            {person.nickname && <p className="text-amber-400/80 mb-1">"{person.nickname}"</p>}
-            {person.maidenName && <p className="text-stone-400 text-sm">née {person.maidenName}</p>}
-            <div className="flex flex-wrap gap-2 mt-3">
-              {person.tribeEthnicity && <Badge>{person.tribeEthnicity}</Badge>}
-              {person.totem && <Badge>Totem: {person.totem}</Badge>}
-              {person.originCountry && <Badge>🌍 {person.originVillage ? `${person.originVillage}, ` : ""}{person.originCountry}</Badge>}
-              {person.birthDate && <Badge>Born {new Date(person.birthDate).getFullYear()}</Badge>}
-              {person.deathDate && <Badge>† {new Date(person.deathDate).getFullYear()}</Badge>}
+            <div className="flex-1">
+              <div className="mb-2 flex flex-wrap items-start gap-2">
+                <h1 className="text-2xl font-bold">
+                  {person.firstName} {person.middleName} {person.lastName}
+                </h1>
+                {person.isVerified && (
+                  <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400">
+                    ✓ Verified
+                  </span>
+                )}
+                {person.aliveStatus === "deceased" && (
+                  <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">†</span>
+                )}
+              </div>
+              {person.nickname && <p className="mb-1 text-primary/90">&quot;{person.nickname}&quot;</p>}
+              {person.maidenName && <p className="text-sm text-muted-foreground">née {person.maidenName}</p>}
+              <div className="mt-3 flex flex-wrap gap-2">
+                {person.tribeEthnicity && <Badge>{person.tribeEthnicity}</Badge>}
+                {person.totem && <Badge>Totem: {person.totem}</Badge>}
+                {person.originCountry && (
+                  <Badge>
+                    🌍 {person.originVillage ? `${person.originVillage}, ` : ""}
+                    {person.originCountry}
+                  </Badge>
+                )}
+                {person.birthDate && <Badge>Born {new Date(person.birthDate).getFullYear()}</Badge>}
+                {person.deathDate && <Badge>† {new Date(person.deathDate).getFullYear()}</Badge>}
+              </div>
             </div>
-          </div>
-          <div className="flex flex-col gap-2 sm:items-end">
-            <Link href={`/persons/${id}/edit`} className="px-4 py-2 bg-stone-700 hover:bg-stone-600 text-white text-sm rounded-lg transition">Edit</Link>
-            <Link href={`/merge-requests/new?sourcePersonId=${id}`} className="px-4 py-2 bg-amber-900/50 hover:bg-amber-900 text-amber-400 text-sm rounded-lg border border-amber-700/50 transition">
-              Request Merge
-            </Link>
-          </div>
-        </div>
+            <div className="flex flex-col gap-2 sm:items-end">
+              <Button variant="secondary" size="sm" asChild>
+                <Link href={`/persons/${id}/edit`}>Edit</Link>
+              </Button>
+              <Button variant="outline" size="sm" asChild className="border-primary/40 text-primary">
+                <Link href={`/merge-requests/new?sourcePersonId=${id}`}>Request Merge</Link>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Main content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Biography */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
             {(person.biography || person.oralHistory) && (
-              <section className="bg-stone-800 border border-stone-700 rounded-xl p-5">
-                {person.biography && (
-                  <>
-                    <h2 className="text-amber-400 font-semibold mb-3">Biography</h2>
-                    <p className="text-stone-300 leading-relaxed whitespace-pre-wrap">{person.biography}</p>
-                  </>
-                )}
-                {person.oralHistory && (
-                  <>
-                    <h2 className="text-amber-400 font-semibold mt-4 mb-3">Oral History & Traditions</h2>
-                    <p className="text-stone-300 leading-relaxed whitespace-pre-wrap italic">{person.oralHistory}</p>
-                  </>
-                )}
-              </section>
+              <Card>
+                <CardContent className="space-y-4 p-5">
+                  {person.biography && (
+                    <>
+                      <h2 className="font-semibold text-primary">Biography</h2>
+                      <p className="whitespace-pre-wrap leading-relaxed text-foreground">{person.biography}</p>
+                    </>
+                  )}
+                  {person.oralHistory && (
+                    <>
+                      <h2 className="mt-4 font-semibold text-primary">Oral History & Traditions</h2>
+                      <p className="whitespace-pre-wrap italic leading-relaxed text-muted-foreground">{person.oralHistory}</p>
+                    </>
+                  )}
+                </CardContent>
+              </Card>
             )}
 
-            {/* Life Events */}
-            <section className="bg-stone-800 border border-stone-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-amber-400 font-semibold">Life Events</h2>
-                <button onClick={() => setShowAddEvent(true)} className="text-sm text-amber-400 hover:text-amber-300">+ Add Event</button>
-              </div>
-              {lifeEvents.length === 0 ? (
-                <p className="text-stone-500 text-sm">No life events recorded yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {lifeEvents.map(ev => (
-                    <div key={ev.id} className="flex gap-3 items-start">
-                      <span className="text-xl mt-0.5">{EVENT_ICONS[ev.type] || "📌"}</span>
-                      <div>
-                        <p className="font-medium text-white">{ev.title || ev.customType || ev.type.replace(/_/g, " ")}</p>
-                        {ev.eventDate && <p className="text-stone-400 text-xs">{new Date(ev.eventDate).toLocaleDateString()}{ev.location ? ` · ${ev.location}` : ""}</p>}
-                        {ev.eventDateApprox && !ev.eventDate && <p className="text-stone-400 text-xs">{ev.eventDateApprox}</p>}
-                        {ev.description && <p className="text-stone-400 text-sm mt-1">{ev.description}</p>}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base text-primary">Life Events</CardTitle>
+                <Button variant="link" className="h-auto p-0 text-primary" onClick={() => setShowAddEvent(true)}>
+                  + Add Event
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {lifeEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No life events recorded yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {lifeEvents.map((ev) => (
+                      <div key={ev.id} className="flex items-start gap-3">
+                        <span className="mt-0.5 text-xl">{EVENT_ICONS[ev.type] || "📌"}</span>
+                        <div>
+                          <p className="font-medium text-foreground">
+                            {ev.title || ev.customType || ev.type.replace(/_/g, " ")}
+                          </p>
+                          {ev.eventDate && (
+                            <p className="text-xs text-muted-foreground">
+                              {new Date(ev.eventDate).toLocaleDateString()}
+                              {ev.location ? ` · ${ev.location}` : ""}
+                            </p>
+                          )}
+                          {ev.eventDateApprox && !ev.eventDate && (
+                            <p className="text-xs text-muted-foreground">{ev.eventDateApprox}</p>
+                          )}
+                          {ev.description && <p className="mt-1 text-sm text-muted-foreground">{ev.description}</p>}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </section>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Relationships */}
           <div className="space-y-4">
-            <section className="bg-stone-800 border border-stone-700 rounded-xl p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-amber-400 font-semibold">Relationships</h2>
-                <button onClick={() => setShowAddRel(true)} className="text-sm text-amber-400 hover:text-amber-300">+ Add</button>
-              </div>
-              {relationships.length === 0 ? (
-                <p className="text-stone-500 text-sm">No relationships added yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {relationships.map(rel => {
-                    const other = getRelatedPerson(rel);
-                    return (
-                      <div key={rel.id} className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-stone-700 flex items-center justify-center text-sm font-bold text-amber-400 flex-shrink-0">
-                          {other ? `${other.firstName[0]}${other.lastName[0]}` : "?"}
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-base text-primary">Relationships</CardTitle>
+                <Button variant="link" className="h-auto p-0 text-primary" onClick={() => setShowAddRel(true)}>
+                  + Add
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {relationships.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No relationships added yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {relationships.map((rel) => {
+                      const other = getRelatedPerson(rel);
+                      return (
+                        <div key={rel.id} className="flex items-center gap-3">
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-primary">
+                            {other ? `${other.firstName[0]}${other.lastName[0]}` : "?"}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs text-muted-foreground">{relTypeLabel(rel.type, rel)}</p>
+                            {other ? (
+                              <Link
+                                href={`/persons/${other.id}`}
+                                className="block truncate text-sm font-medium text-foreground hover:text-primary"
+                              >
+                                {other.firstName} {other.lastName}
+                              </Link>
+                            ) : (
+                              <p className="text-sm text-muted-foreground">Loading...</p>
+                            )}
+                            {rel.type === "spouse" && rel.unionOrder && rel.unionOrder > 1 && (
+                              <span className="text-xs text-accent-foreground/80">Wife #{rel.unionOrder}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-stone-400 text-xs">{relTypeLabel(rel.type, rel)}</p>
-                          {other ? (
-                            <Link href={`/persons/${other.id}`} className="text-white text-sm hover:text-amber-400 font-medium truncate block">
-                              {other.firstName} {other.lastName}
-                            </Link>
-                          ) : (
-                            <p className="text-stone-500 text-sm">Loading...</p>
-                          )}
-                          {rel.type === "spouse" && rel.unionOrder && rel.unionOrder > 1 && (
-                            <span className="text-xs text-amber-600">Wife #{rel.unionOrder}</span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </section>
+                      );
+                    })}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-            <Link href={`/trees?personId=${id}`} className="block bg-stone-800 border border-stone-700 hover:border-amber-500/50 rounded-xl p-4 text-center transition">
-              <p className="text-amber-400 font-medium">View in Family Tree →</p>
-            </Link>
+            <Button variant="outline" className="h-auto w-full py-4" asChild>
+              <Link href={`/trees?personId=${id}`}>
+                <span className="font-medium text-primary">View in Family Tree →</span>
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
 
-      {showAddRel && <AddRelationModal personId={Number(id)} onClose={() => setShowAddRel(false)} onSaved={() => { setShowAddRel(false); fetchData(); }} />}
-      {showAddEvent && <AddEventModal personId={Number(id)} onClose={() => setShowAddEvent(false)} onSaved={() => { setShowAddEvent(false); fetchData(); }} />}
+      {showAddRel && (
+        <AddRelationModal
+          personId={Number(id)}
+          onClose={() => setShowAddRel(false)}
+          onSaved={() => {
+            setShowAddRel(false);
+            fetchData();
+          }}
+        />
+      )}
+      {showAddEvent && (
+        <AddEventModal
+          personId={Number(id)}
+          onClose={() => setShowAddEvent(false)}
+          onSaved={() => {
+            setShowAddEvent(false);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 }
 
 function Badge({ children }: { children: React.ReactNode }) {
-  return <span className="text-xs px-2.5 py-1 bg-stone-700 text-stone-300 rounded-full">{children}</span>;
+  return (
+    <span className="rounded-full border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">{children}</span>
+  );
 }
 
 const REL_TYPES = [
@@ -273,25 +366,47 @@ const REL_TYPES = [
   { value: "levirate", label: "Levirate Union" },
 ];
 
-function AddRelationModal({ personId, onClose, onSaved }: { personId: number; onClose: () => void; onSaved: () => void; }) {
-  const [form, setForm] = useState({ otherPersonId: "", type: "parent_child", asPersonA: "true", startDate: "", ceremonyType: "", unionOrder: "1", notes: "" });
+function AddRelationModal({
+  personId,
+  onClose,
+  onSaved,
+}: {
+  personId: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    otherPersonId: "",
+    type: "parent_child",
+    asPersonA: "true",
+    startDate: "",
+    ceremonyType: "",
+    unionOrder: "1",
+    notes: "",
+  });
   const [search, setSearch] = useState("");
-  const [results, setResults] = useState<any[]>([]);
+  const [results, setResults] = useState<{ id: number; firstName: string; lastName: string }[]>([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (!search) { setResults([]); return; }
+    if (!search) {
+      setResults([]);
+      return;
+    }
     const t = setTimeout(async () => {
       const r = await fetch(`/api/persons?search=${encodeURIComponent(search)}&limit=10`);
       const d = await r.json();
-      setResults((d.data?.persons || []).filter((p: any) => p.id !== personId));
+      setResults((d.data?.persons || []).filter((p: { id: number }) => p.id !== personId));
     }, 300);
     return () => clearTimeout(t);
-  }, [search]);
+  }, [search, personId]);
 
   const handleSave = async () => {
-    if (!form.otherPersonId || !form.type) { setError("Please select a person and type."); return; }
+    if (!form.otherPersonId || !form.type) {
+      setError("Please select a person and type.");
+      return;
+    }
     setSaving(true);
     setError("");
     const personAId = form.asPersonA === "true" ? personId : Number(form.otherPersonId);
@@ -299,29 +414,56 @@ function AddRelationModal({ personId, onClose, onSaved }: { personId: number; on
     const res = await fetch("/api/relationships", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ personAId, personBId, type: form.type, startDate: form.startDate || undefined, ceremonyType: form.ceremonyType || undefined, unionOrder: Number(form.unionOrder), notes: form.notes || undefined }),
+      body: JSON.stringify({
+        personAId,
+        personBId,
+        type: form.type,
+        startDate: form.startDate || undefined,
+        ceremonyType: form.ceremonyType || undefined,
+        unionOrder: Number(form.unionOrder),
+        notes: form.notes || undefined,
+      }),
     });
     const data = await res.json();
-    if (!res.ok) { setError(data.message || "Failed to save."); setSaving(false); return; }
+    if (!res.ok) {
+      setError(data.message || "Failed to save.");
+      setSaving(false);
+      return;
+    }
     onSaved();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 w-full max-w-md shadow-2xl">
-        <h3 className="text-xl font-bold text-amber-400 mb-4">Add Relationship</h3>
-        {error && <div className="mb-3 p-2 bg-red-900/40 border border-red-700 rounded text-red-300 text-sm">{error}</div>}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
+      <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-primary">Add Relationship</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">{error}</div>
+          )}
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Search Person</label>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Type a name..."
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500" />
+          <div className="space-y-2">
+            <Label>Search Person</Label>
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Type a name..."
+            />
             {results.length > 0 && (
-              <div className="mt-1 bg-stone-900 border border-stone-700 rounded-lg overflow-hidden">
-                {results.map(p => (
-                  <button key={p.id} onClick={() => { setForm(f => ({ ...f, otherPersonId: String(p.id) })); setSearch(`${p.firstName} ${p.lastName}`); setResults([]); }}
-                    className="w-full text-left px-3 py-2 hover:bg-stone-700 text-white text-sm border-b border-stone-700 last:border-0">
+              <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover">
+                {results.map((p) => (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => {
+                      setForm((f) => ({ ...f, otherPersonId: String(p.id) }));
+                      setSearch(`${p.firstName} ${p.lastName}`);
+                      setResults([]);
+                    }}
+                    className="w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-accent"
+                  >
                     {p.firstName} {p.lastName}
                   </button>
                 ))}
@@ -329,72 +471,126 @@ function AddRelationModal({ personId, onClose, onSaved }: { personId: number; on
             )}
           </div>
 
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Relationship Type</label>
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:border-amber-500">
-              {REL_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-            </select>
+          <div className="space-y-2">
+            <Label>Relationship Type</Label>
+            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {REL_TYPES.map((t) => (
+                  <SelectItem key={t.value} value={t.value}>
+                    {t.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {form.type === "parent_child" && (
-            <div>
-              <label className="block text-stone-300 text-sm mb-1">I am the...</label>
-              <select value={form.asPersonA} onChange={e => setForm(f => ({ ...f, asPersonA: e.target.value }))}
-                className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:border-amber-500">
-                <option value="true">Parent (this person is the child)</option>
-                <option value="false">Child (this person is the parent)</option>
-              </select>
+            <div className="space-y-2">
+              <Label>I am the...</Label>
+              <Select value={form.asPersonA} onValueChange={(v) => setForm((f) => ({ ...f, asPersonA: v }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="true">Parent (this person is the child)</SelectItem>
+                  <SelectItem value="false">Child (this person is the parent)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
 
           {["spouse", "partner", "traditional_marriage"].includes(form.type) && (
             <>
-              <div>
-                <label className="block text-stone-300 text-sm mb-1">Marriage / Union Date</label>
-                <input type="date" value={form.startDate} onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                  className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+              <div className="space-y-2">
+                <Label>Marriage / Union Date</Label>
+                <Input type="date" value={form.startDate} onChange={(e) => setForm((f) => ({ ...f, startDate: e.target.value }))} />
               </div>
-              <div>
-                <label className="block text-stone-300 text-sm mb-1">Ceremony Type</label>
-                <input value={form.ceremonyType} onChange={e => setForm(f => ({ ...f, ceremonyType: e.target.value }))} placeholder="e.g. Lobola, Church, Civil, Customary"
-                  className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500" />
+              <div className="space-y-2">
+                <Label>Ceremony Type</Label>
+                <Input
+                  value={form.ceremonyType}
+                  onChange={(e) => setForm((f) => ({ ...f, ceremonyType: e.target.value }))}
+                  placeholder="e.g. Lobola, Church, Civil, Customary"
+                />
               </div>
-              <div>
-                <label className="block text-stone-300 text-sm mb-1">Union Order (1 = first wife/husband)</label>
-                <input type="number" min={1} max={10} value={form.unionOrder} onChange={e => setForm(f => ({ ...f, unionOrder: e.target.value }))}
-                  className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+              <div className="space-y-2">
+                <Label>Union Order (1 = first wife/husband)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={10}
+                  value={form.unionOrder}
+                  onChange={(e) => setForm((f) => ({ ...f, unionOrder: e.target.value }))}
+                />
               </div>
             </>
           )}
 
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Notes (optional)</label>
-            <textarea rows={2} value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Any additional details..."
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none" />
+          <div className="space-y-2">
+            <Label>Notes (optional)</Label>
+            <Textarea
+              rows={2}
+              value={form.notes}
+              onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))}
+              placeholder="Any additional details..."
+            />
           </div>
-        </div>
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white font-semibold rounded-lg transition">
-            {saving ? "Saving..." : "Save Relationship"}
-          </button>
-          <button onClick={onClose} className="px-5 py-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg transition">Cancel</button>
-        </div>
-      </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
+              {saving ? "Saving..." : "Save Relationship"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
 const EVENT_TYPES = [
-  "birth", "death", "naming_ceremony", "initiation", "lobola", "bridewealth",
-  "traditional_marriage", "church_marriage", "civil_marriage", "graduation",
-  "education", "migration", "achievement", "memorial", "burial", "custom",
+  "birth",
+  "death",
+  "naming_ceremony",
+  "initiation",
+  "lobola",
+  "bridewealth",
+  "traditional_marriage",
+  "church_marriage",
+  "civil_marriage",
+  "graduation",
+  "education",
+  "migration",
+  "achievement",
+  "memorial",
+  "burial",
+  "custom",
 ];
 
-function AddEventModal({ personId, onClose, onSaved }: { personId: number; onClose: () => void; onSaved: () => void; }) {
-  const [form, setForm] = useState({ type: "birth", customType: "", title: "", description: "", eventDate: "", eventDateApprox: "", location: "", country: "" });
+function AddEventModal({
+  personId,
+  onClose,
+  onSaved,
+}: {
+  personId: number;
+  onClose: () => void;
+  onSaved: () => void;
+}) {
+  const [form, setForm] = useState({
+    type: "birth",
+    customType: "",
+    title: "",
+    description: "",
+    eventDate: "",
+    eventDateApprox: "",
+    location: "",
+    country: "",
+  });
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -407,66 +603,99 @@ function AddEventModal({ personId, onClose, onSaved }: { personId: number; onClo
       body: JSON.stringify({ personId, ...form, eventDate: form.eventDate || undefined }),
     });
     const data = await res.json();
-    if (!res.ok) { setError(data.message || "Failed."); setSaving(false); return; }
+    if (!res.ok) {
+      setError(data.message || "Failed.");
+      setSaving(false);
+      return;
+    }
     onSaved();
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-      <div className="bg-stone-800 border border-stone-700 rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto">
-        <h3 className="text-xl font-bold text-amber-400 mb-4">Add Life Event</h3>
-        {error && <div className="mb-3 p-2 bg-red-900/40 border border-red-700 rounded text-red-300 text-sm">{error}</div>}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
+      <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-primary">Add Life Event</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {error && (
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">{error}</div>
+          )}
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Event Type</label>
-            <select value={form.type} onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:border-amber-500">
-              {EVENT_TYPES.map(t => <option key={t} value={t}>{EVENT_ICONS[t] || "📌"} {t.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase())}</option>)}
-            </select>
+          <div className="space-y-2">
+            <Label>Event Type</Label>
+            <Select value={form.type} onValueChange={(v) => setForm((f) => ({ ...f, type: v }))}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {EVENT_TYPES.map((t) => (
+                  <SelectItem key={t} value={t}>
+                    {EVENT_ICONS[t] || "📌"}{" "}
+                    {t.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           {form.type === "custom" && (
-            <div>
-              <label className="block text-stone-300 text-sm mb-1">Custom Type Label</label>
-              <input value={form.customType} onChange={e => setForm(f => ({ ...f, customType: e.target.value }))} placeholder="e.g. Coronation, First Hunt"
-                className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500" />
+            <div className="space-y-2">
+              <Label>Custom Type Label</Label>
+              <Input
+                value={form.customType}
+                onChange={(e) => setForm((f) => ({ ...f, customType: e.target.value }))}
+                placeholder="e.g. Coronation, First Hunt"
+              />
             </div>
           )}
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Title</label>
-            <input value={form.title} onChange={e => setForm(f => ({ ...f, title: e.target.value }))} placeholder="Brief title..."
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500" />
+          <div className="space-y-2">
+            <Label>Title</Label>
+            <Input
+              value={form.title}
+              onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+              placeholder="Brief title..."
+            />
           </div>
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Date</label>
-            <input type="date" value={form.eventDate} onChange={e => setForm(f => ({ ...f, eventDate: e.target.value }))}
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white focus:outline-none focus:border-amber-500" />
+          <div className="space-y-2">
+            <Label>Date</Label>
+            <Input type="date" value={form.eventDate} onChange={(e) => setForm((f) => ({ ...f, eventDate: e.target.value }))} />
           </div>
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Approximate Date (if exact unknown)</label>
-            <input value={form.eventDateApprox} onChange={e => setForm(f => ({ ...f, eventDateApprox: e.target.value }))} placeholder="e.g. Around 1960, Early 1970s"
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500" />
+          <div className="space-y-2">
+            <Label>Approximate Date (if exact unknown)</Label>
+            <Input
+              value={form.eventDateApprox}
+              onChange={(e) => setForm((f) => ({ ...f, eventDateApprox: e.target.value }))}
+              placeholder="e.g. Around 1960, Early 1970s"
+            />
           </div>
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Location</label>
-            <input value={form.location} onChange={e => setForm(f => ({ ...f, location: e.target.value }))} placeholder="Village, city..."
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500" />
+          <div className="space-y-2">
+            <Label>Location</Label>
+            <Input
+              value={form.location}
+              onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
+              placeholder="Village, city..."
+            />
           </div>
-          <div>
-            <label className="block text-stone-300 text-sm mb-1">Description</label>
-            <textarea rows={3} value={form.description} onChange={e => setForm(f => ({ ...f, description: e.target.value }))} placeholder="Details about this event..."
-              className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded-lg text-white placeholder-stone-500 focus:outline-none focus:border-amber-500 resize-none" />
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Textarea
+              rows={3}
+              value={form.description}
+              onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
+              placeholder="Details about this event..."
+            />
           </div>
-        </div>
 
-        <div className="flex gap-3 mt-6">
-          <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-2.5 bg-amber-600 hover:bg-amber-500 disabled:bg-amber-800 text-white font-semibold rounded-lg transition">
-            {saving ? "Saving..." : "Save Event"}
-          </button>
-          <button onClick={onClose} className="px-5 py-2.5 bg-stone-700 hover:bg-stone-600 text-white rounded-lg transition">Cancel</button>
-        </div>
-      </div>
+          <div className="flex gap-3 pt-2">
+            <Button type="button" onClick={handleSave} disabled={saving} className="flex-1">
+              {saving ? "Saving..." : "Save Event"}
+            </Button>
+            <Button type="button" variant="secondary" onClick={onClose}>
+              Cancel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
