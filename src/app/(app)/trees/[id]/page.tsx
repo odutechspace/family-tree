@@ -664,6 +664,154 @@ function AddMemberModal({
   );
 }
 
+// ─── Invite Family Member Modal ───────────────────────────────────────────────
+
+function InviteModal({
+  treeId,
+  persons,
+  onClose,
+}: {
+  treeId: number;
+  persons: Person[];
+  onClose: () => void;
+}) {
+  const [email, setEmail] = useState("");
+  const [personId, setPersonId] = useState("");
+  const [message, setMessage] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setError("Email is required.");
+
+      return;
+    }
+    setSaving(true);
+    setError("");
+    setSuccess("");
+
+    const res = await fetch("/api/invites", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        email,
+        treeId,
+        personId: personId ? Number(personId) : undefined,
+        message: message.trim() || undefined,
+      }),
+    });
+    const data = await res.json();
+
+    if (!res.ok) {
+      setError(data.message || "Failed to send invite.");
+      setSaving(false);
+
+      return;
+    }
+    setSuccess(`Invite sent to ${email}!`);
+    setEmail("");
+    setPersonId("");
+    setMessage("");
+    setSaving(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
+      <Card className="w-full max-w-md shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-primary">Invite a Family Member</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            They&apos;ll get an email with a link to join this tree and fill in
+            their own details.
+          </p>
+        </CardHeader>
+        <CardContent>
+          {error && (
+            <div className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">
+              {error}
+            </div>
+          )}
+          {success && (
+            <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+              {success}
+            </div>
+          )}
+
+          <form className="space-y-4" onSubmit={handleSend}>
+            <div className="space-y-1">
+              <Label>Email address *</Label>
+              <Input
+                required
+                placeholder="family.member@example.com"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1">
+              <Label>
+                Link to person in tree{" "}
+                <span className="text-xs text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Select
+                value={personId || "__none__"}
+                onValueChange={(v) => setPersonId(v === "__none__" ? "" : v)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="— Select person —" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">
+                    — Not linked to a specific person —
+                  </SelectItem>
+                  {persons.map((p) => (
+                    <SelectItem key={p.id} value={String(p.id)}>
+                      {p.firstName} {p.lastName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                If selected, their account will be automatically linked to that
+                person when they accept.
+              </p>
+            </div>
+
+            <div className="space-y-1">
+              <Label>
+                Personal message{" "}
+                <span className="text-xs text-muted-foreground">
+                  (optional)
+                </span>
+              </Label>
+              <Input
+                placeholder="e.g. Hi Aunty, come add your memories!"
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+              />
+            </div>
+
+            <div className="flex gap-2 pt-1">
+              <Button className="flex-1" disabled={saving} type="submit">
+                {saving ? "Sending..." : "Send Invite"}
+              </Button>
+              <Button type="button" variant="outline" onClick={onClose}>
+                Close
+              </Button>
+            </div>
+          </form>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 // ─── Add Relative Modal (from canvas node) ────────────────────────────────────
 
 type RelativeRole = "parent" | "child" | "spouse";
@@ -707,6 +855,7 @@ export default function TreeViewPage() {
   const [loading, setLoading] = useState(true);
   const [showAddMember, setShowAddMember] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [showInvite, setShowInvite] = useState(false);
   const [addRelative, setAddRelative] = useState<{
     person: Person;
     role: RelativeRole;
@@ -773,6 +922,14 @@ export default function TreeViewPage() {
           </span>
           <Button size="sm" onClick={() => setShowAddMember(true)}>
             + Add Person
+          </Button>
+          <Button
+            className="border-primary/40 text-primary"
+            size="sm"
+            variant="outline"
+            onClick={() => setShowInvite(true)}
+          >
+            Invite Family
           </Button>
           <Button
             size="sm"
@@ -896,6 +1053,14 @@ export default function TreeViewPage() {
             setAddRelative(null);
             fetchTree();
           }}
+        />
+      )}
+
+      {showInvite && (
+        <InviteModal
+          persons={persons}
+          treeId={Number(id)}
+          onClose={() => setShowInvite(false)}
         />
       )}
     </div>

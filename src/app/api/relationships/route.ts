@@ -7,6 +7,7 @@ import { ApiError } from "@/src/lib/ApiError";
 import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
 import { awardXP } from "@/src/api/services/gamification/gamification.service";
+import { inferRelationships } from "@/src/api/services/relationship.inference";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
@@ -51,7 +52,10 @@ export async function POST(req: NextRequest) {
 
   const repo = AppDataSource.getRepository(Relationship);
   const rel = repo.create({ ...body, createdByUserId: user.id });
-  const saved = await repo.save(rel);
+  const saved = (await repo.save(rel)) as unknown as Relationship;
+
+  // Fire-and-forget: infer additional relationships from the new link
+  inferRelationships(saved, user.id).catch(() => {});
 
   const gamification = await awardXP(
     user.id,

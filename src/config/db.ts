@@ -17,6 +17,7 @@ const UserAchievement =
   require("@/src/api/entities/UserAchievement").UserAchievement;
 const Quest = require("@/src/api/entities/Quest").Quest;
 const UserQuest = require("@/src/api/entities/UserQuest").UserQuest;
+const FamilyInvite = require("@/src/api/entities/FamilyInvite").FamilyInvite;
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -40,6 +41,7 @@ export const AppDataSource = new DataSource({
     UserAchievement,
     Quest,
     UserQuest,
+    FamilyInvite,
   ],
   synchronize: process.env.NODE_ENV !== "production",
   logging: ["error", "schema"],
