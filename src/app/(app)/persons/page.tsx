@@ -1,16 +1,24 @@
 "use client";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
+import {
+  formatPersonDisplayName,
+  getPersonInitials,
+} from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface Person {
   id: number;
   firstName: string;
   middleName?: string;
   lastName: string;
+  maidenName?: string;
   nickname?: string;
   gender: string;
   birthDate?: string;
@@ -30,32 +38,29 @@ function genderChipClass(gender: string) {
 }
 
 export default function PersonsPage() {
-  const [persons, setPersons] = useState<Person[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [total, setTotal] = useState(0);
-
-  const fetchPersons = async (q = "") => {
-    setLoading(true);
-    const res = await fetch(
-      `/api/persons?search=${encodeURIComponent(q)}&limit=40`,
-    );
-    const data = await res.json();
-
-    setPersons(data.data?.persons || []);
-    setTotal(data.data?.total || 0);
-    setLoading(false);
-  };
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    const t = setTimeout(() => fetchPersons(search), 300);
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
 
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => {
-    fetchPersons();
-  }, []);
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.persons.directory({
+      search: debouncedSearch,
+      limit: 40,
+    }),
+    queryFn: () =>
+      apiGetData<{ persons: Person[]; total: number }>(
+        `/api/persons?search=${encodeURIComponent(debouncedSearch)}&limit=40`,
+      ),
+  });
+
+  const persons = data?.persons ?? [];
+  const total = data?.total ?? 0;
+  const loading = isPending;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -115,18 +120,16 @@ export default function PersonsPage() {
                           src={p.photoUrl}
                         />
                       ) : (
-                        `${p.firstName[0]}${p.lastName[0]}`
+                        getPersonInitials(p)
                       )}
                     </div>
                     <div className="text-center">
-                      <p className="font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
-                        {p.firstName} {p.lastName}
+                      <p
+                        className="line-clamp-3 font-semibold leading-tight text-foreground transition-colors group-hover:text-primary"
+                        title={formatPersonDisplayName(p)}
+                      >
+                        {formatPersonDisplayName(p)}
                       </p>
-                      {p.nickname && (
-                        <p className="mt-0.5 text-xs text-muted-foreground">
-                          &quot;{p.nickname}&quot;
-                        </p>
-                      )}
                       <div className="mt-2 flex flex-wrap justify-center gap-1">
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs ${genderChipClass(p.gender)}`}

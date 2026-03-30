@@ -12,6 +12,7 @@ import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
 import { sendMail } from "@/src/api/services/mail/mail.service";
 import { baseTemplate } from "@/src/api/services/mail/baseTemplate";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
 
 const INVITE_TTL_DAYS = 7;
 
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
   const acceptUrl = `${appUrl}/invite/accept?token=${saved.token}`;
 
   const personClause = person
-    ? `<p>You have been identified as <strong>${person.firstName} ${person.lastName}</strong> in the tree. Once you join, your profile will be linked automatically.</p>`
+    ? `<p>You have been identified as <strong>${formatPersonDisplayName(person)}</strong> in the tree. Once you join, your profile will be linked automatically.</p>`
     : "";
 
   const html = baseTemplate(

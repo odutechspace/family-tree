@@ -1,10 +1,13 @@
 "use client";
+import { useQuery } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface Clan {
   id: number;
@@ -18,28 +21,25 @@ interface Clan {
 }
 
 export default function ClansPage() {
-  const [clans, setClans] = useState<Clan[]>([]);
   const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-
-  const fetchClans = async (q = "") => {
-    setLoading(true);
-    const res = await fetch(`/api/clans?search=${encodeURIComponent(q)}`);
-    const data = await res.json();
-
-    setClans(data.data?.clans || []);
-    setLoading(false);
-  };
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   useEffect(() => {
-    const t = setTimeout(() => fetchClans(search), 300);
+    const t = setTimeout(() => setDebouncedSearch(search), 300);
 
     return () => clearTimeout(t);
   }, [search]);
 
-  useEffect(() => {
-    fetchClans();
-  }, []);
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.clans.list({ search: debouncedSearch }),
+    queryFn: () =>
+      apiGetData<{ clans: Clan[] }>(
+        `/api/clans?search=${encodeURIComponent(debouncedSearch)}`,
+      ),
+  });
+
+  const clans = data?.clans ?? [];
+  const loading = isPending;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">

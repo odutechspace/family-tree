@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import QuestCard from "@/src/components/gamification/QuestCard";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 import XPBar from "@/src/components/gamification/XPBar";
 
 interface Quest {
@@ -56,17 +58,14 @@ const SECTION_META: Record<
 };
 
 export default function QuestsPage() {
-  const [groups, setGroups] = useState<QuestGroups | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.gamification.quests,
+    queryFn: () =>
+      apiGetData<{ quests: QuestGroups }>("/api/gamification/quests"),
+  });
 
-  useEffect(() => {
-    fetch("/api/gamification/quests")
-      .then((r) => r.json())
-      .then((d) => {
-        setGroups(d.data?.quests || null);
-        setLoading(false);
-      });
-  }, []);
+  const groups = data?.quests ?? null;
+  const loading = isPending;
 
   const totalXP = groups
     ? [...Object.values(groups)]

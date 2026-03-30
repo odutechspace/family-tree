@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState, useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import dynamic from "next/dynamic";
@@ -20,6 +21,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
+import {
+  formatPersonDisplayName,
+  getPersonInitials,
+} from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 const FamilyTreeViewer = dynamic(
   () => import("@/src/components/tree/FamilyTreeViewer"),
@@ -44,7 +51,9 @@ interface FamilyTree {
 interface Person {
   id: number;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
+  maidenName?: string | null;
   nickname?: string;
   gender: string;
   birthDate?: string;
@@ -355,21 +364,21 @@ function StartWizard({
     },
     spouse: {
       title: "Add a spouse or partner",
-      subtitle: `Adding a spouse for ${rootPerson?.firstName || "the anchor"}.`,
+      subtitle: `Adding a spouse for ${rootPerson ? formatPersonDisplayName(rootPerson) : "the anchor"}.`,
       num: 2,
       total: 4,
       onSubmit: handleSpouse,
     },
     child: {
       title: "Add a child",
-      subtitle: `Adding a child of ${rootPerson?.firstName || "the anchor"}.`,
+      subtitle: `Adding a child of ${rootPerson ? formatPersonDisplayName(rootPerson) : "the anchor"}.`,
       num: 3,
       total: 4,
       onSubmit: handleChild,
     },
     parent: {
       title: "Add a parent",
-      subtitle: `Adding a parent of ${rootPerson?.firstName || "the anchor"}.`,
+      subtitle: `Adding a parent of ${rootPerson ? formatPersonDisplayName(rootPerson) : "the anchor"}.`,
       num: 4,
       total: 4,
       onSubmit: handleParent,
@@ -591,11 +600,11 @@ function AddMemberModal({
   };
 
   const title = prefillRelativeOf
-    ? `Add ${REL_LABELS[prefillRelativeOf.relType] || "Relative"} for ${prefillRelativeOf.person.firstName}`
+    ? `Add ${REL_LABELS[prefillRelativeOf.relType] || "Relative"} for ${formatPersonDisplayName(prefillRelativeOf.person)}`
     : "Add Person to Tree";
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
       <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto shadow-lg">
         <CardHeader>
           <CardTitle className="text-primary">{title}</CardTitle>
@@ -626,8 +635,8 @@ function AddMemberModal({
                         type="button"
                         onClick={() => addExistingToTree(p.id)}
                       >
-                        <span>
-                          {p.firstName} {p.lastName}
+                        <span className="truncate text-left" title={formatPersonDisplayName(p)}>
+                          {formatPersonDisplayName(p)}
                         </span>
                         <span className="text-xs text-primary">Add →</span>
                       </button>
@@ -670,8 +679,11 @@ function AddMemberModal({
                 {codeResult && (
                   <div className="flex items-center justify-between rounded-md border border-primary/30 bg-primary/5 px-3 py-2">
                     <div>
-                      <p className="text-sm font-medium">
-                        {codeResult.firstName} {codeResult.lastName}
+                      <p
+                        className="text-sm font-medium"
+                        title={formatPersonDisplayName(codeResult)}
+                      >
+                        {formatPersonDisplayName(codeResult)}
                       </p>
                       <p className="font-mono text-xs text-muted-foreground">
                         {(codeResult as any).personCode}
@@ -798,7 +810,7 @@ function InviteModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
+    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
       <Card className="w-full max-w-md shadow-lg">
         <CardHeader>
           <CardTitle className="text-primary">Invite a Family Member</CardTitle>
@@ -851,7 +863,7 @@ function InviteModal({
                   </SelectItem>
                   {persons.map((p) => (
                     <SelectItem key={p.id} value={String(p.id)}>
-                      {p.firstName} {p.lastName}
+                      {formatPersonDisplayName(p)}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -928,10 +940,23 @@ function AddRelativeModal({
 
 export default function TreeViewPage() {
   const { id } = useParams<{ id: string }>();
-  const [tree, setTree] = useState<FamilyTree | null>(null);
-  const [persons, setPersons] = useState<Person[]>([]);
-  const [relationships, setRelationships] = useState<Relationship[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { data, isPending, refetch } = useQuery({
+    queryKey: queryKeys.trees.detail(id ?? ""),
+    queryFn: () =>
+      apiGetData<{
+        tree: FamilyTree;
+        persons: Person[];
+        relationships: Relationship[];
+      }>(`/api/trees/${id}`),
+    enabled: !!id,
+  });
+  const tree = data?.tree ?? null;
+  const persons = data?.persons ?? [];
+  const relationships = data?.relationships ?? [];
+  const loading = isPending;
+  const fetchTree = () => {
+    void refetch();
+  };
   const [showAddMember, setShowAddMember] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
@@ -940,32 +965,31 @@ export default function TreeViewPage() {
     role: RelativeRole;
   } | null>(null);
 
-  const fetchTree = useCallback(async () => {
-    const res = await fetch(`/api/trees/${id}`);
-    const data = await res.json();
-
-    if (res.ok) {
-      setTree(data.data.tree);
-      setPersons(data.data.persons || []);
-      setRelationships(data.data.relationships || []);
-    }
-    setLoading(false);
-  }, [id]);
-
   useEffect(() => {
-    fetchTree();
-  }, [fetchTree]);
+    const html = document.documentElement;
+    const body = document.body;
+    const prevHtml = html.style.overflow;
+    const prevBody = body.style.overflow;
+
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+
+    return () => {
+      html.style.overflow = prevHtml;
+      body.style.overflow = prevBody;
+    };
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background text-muted-foreground">
         Loading...
       </div>
     );
   }
   if (!tree) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-destructive">
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background text-destructive">
         Tree not found.
       </div>
     );
@@ -974,8 +998,8 @@ export default function TreeViewPage() {
   const existingPersonIds = persons.map((p) => p.id);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background text-foreground">
-      <div className="flex items-center justify-between border-b border-border bg-card px-4 py-3">
+    <div className="fixed inset-0 z-[100] flex flex-col bg-background text-foreground">
+      <div className="flex shrink-0 items-center justify-between border-b border-border bg-card px-4 py-3">
         <div className="flex items-center gap-3">
           <Button asChild size="sm" variant="ghost">
             <Link href="/trees">← Trees</Link>
@@ -1020,8 +1044,8 @@ export default function TreeViewPage() {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1" style={{ height: "calc(100vh - 120px)" }}>
+      <div className="flex min-h-0 flex-1 overflow-hidden">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {persons.length === 0 ? (
             <StartWizard
               treeId={Number(id)}
@@ -1030,7 +1054,7 @@ export default function TreeViewPage() {
               }}
             />
           ) : (
-            <div className="relative h-full">
+            <div className="relative min-h-0 flex-1">
               <FamilyTreeViewer
                 persons={persons}
                 relationships={relationships}
@@ -1044,7 +1068,7 @@ export default function TreeViewPage() {
         </div>
 
         {sidebarOpen && (
-          <div className="w-64 overflow-y-auto border-l border-border bg-card p-4">
+          <div className="flex w-64 shrink-0 flex-col overflow-y-auto border-l border-border bg-card p-4">
             <h3 className="mb-3 font-semibold text-primary">People in Tree</h3>
             <div className="space-y-2">
               {persons.map((p) => (
@@ -1059,12 +1083,14 @@ export default function TreeViewPage() {
                     <div
                       className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarClass(p.gender)}`}
                     >
-                      {p.firstName[0]}
-                      {p.lastName[0]}
+                      {getPersonInitials(p)}
                     </div>
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-medium leading-tight text-foreground">
-                        {p.firstName} {p.lastName}
+                      <p
+                        className="truncate text-sm font-medium leading-tight text-foreground"
+                        title={formatPersonDisplayName(p)}
+                      >
+                        {formatPersonDisplayName(p)}
                       </p>
                       {p.aliveStatus === "deceased" && (
                         <p className="text-xs text-muted-foreground">†</p>

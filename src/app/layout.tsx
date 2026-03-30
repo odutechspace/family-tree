@@ -7,7 +7,6 @@ import { Providers } from "./providers";
 import { siteConfig } from "@/src/config/site";
 import { fontSans } from "@/src/config/fonts";
 import { LOGOS } from "@/src/config/logos";
-import { Navbar } from "@/src/components/navbar";
 
 export const metadata: Metadata = {
   title: {
@@ -43,8 +42,7 @@ export default function RootLayout({
         )}
       >
         <Providers themeProps={{ attribute: "class", defaultTheme: "dark" }}>
-          <Navbar />
-          <main className="pt-14">{children}</main>
+          {children}
         </Providers>
       </body>
     </html>

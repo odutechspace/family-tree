@@ -1,8 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { useAuth } from "@/src/hooks/useAuth";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface LeaderboardEntry {
   rank: number;
@@ -30,17 +32,17 @@ const LEVEL_COLORS = [
 
 export default function LeaderboardPage() {
   const { user } = useAuth();
-  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch("/api/gamification/leaderboard?limit=20")
-      .then((r) => r.json())
-      .then((d) => {
-        setLeaderboard(d.data?.leaderboard || []);
-        setLoading(false);
-      });
-  }, []);
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.gamification.leaderboard(20),
+    queryFn: () =>
+      apiGetData<{ leaderboard: LeaderboardEntry[] }>(
+        "/api/gamification/leaderboard?limit=20",
+      ),
+  });
+
+  const leaderboard = data?.leaderboard ?? [];
+  const loading = isPending;
 
   const myRank = leaderboard.find((e) => e.userId === user?.id);
 

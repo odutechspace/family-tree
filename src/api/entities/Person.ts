@@ -95,8 +95,8 @@ export class Person {
    * Used to auto-link a Person record to a User account when the user's
    * phoneHash matches on registration or profile update.
    */
-  @Column({ nullable: true })
-  phoneHash: string;
+  @Column({ type: "varchar", length: 64, nullable: true })
+  phoneHash: string | null;
 
   // The user account that manages this person (optional — guests may have no account)
   @Column({ nullable: true })

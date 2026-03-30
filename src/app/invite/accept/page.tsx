@@ -12,6 +12,7 @@ import {
 } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
 
 interface InviteDetails {
   invite: {
@@ -23,7 +24,14 @@ interface InviteDetails {
     expiresAt: string;
   };
   tree: { id: number; name: string } | null;
-  person: { id: number; firstName: string; lastName: string } | null;
+  person: {
+    id: number;
+    firstName: string;
+    middleName?: string;
+    lastName: string;
+    maidenName?: string;
+    nickname?: string;
+  } | null;
   hasAccount: boolean;
 }
 
@@ -176,10 +184,8 @@ function AcceptInvitePage() {
             {details?.person && (
               <div className="mb-4 rounded-lg border border-primary/30 bg-primary/5 px-4 py-3 text-sm text-primary">
                 You&apos;ve been identified as{" "}
-                <strong>
-                  {details.person.firstName} {details.person.lastName}
-                </strong>{" "}
-                in the tree. Your profile will be linked automatically.
+                <strong>{formatPersonDisplayName(details.person)}</strong> in the
+                tree. Your profile will be linked automatically.
               </div>
             )}
 

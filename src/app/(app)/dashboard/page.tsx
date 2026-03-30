@@ -1,9 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/src/hooks/useAuth";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 import XPBar from "@/src/components/gamification/XPBar";
 import QuestCard from "@/src/components/gamification/QuestCard";
 import AchievementBadge from "@/src/components/gamification/AchievementBadge";
@@ -41,74 +44,105 @@ interface RecentAchievement {
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
-  const [stats, setStats] = useState({
-    trees: 0,
-    persons: 0,
-    pendingMerges: 0,
+  const dashboardEnabled = !!user;
+
+  const [
+    treesQuery,
+    personsQuery,
+    mergesQuery,
+    questsQuery,
+    profileQuery,
+    activityQuery,
+  ] = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.trees.list({ mine: true }),
+        queryFn: () => apiGetData<{ trees: unknown[] }>("/api/trees?mine=1"),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.persons.summary({ limit: 1 }),
+        queryFn: () => apiGetData<{ total: number }>("/api/persons?limit=1"),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.mergeRequests.list({ status: "pending" }),
+        queryFn: () =>
+          apiGetData<{ requests: unknown[] }>(
+            "/api/merge-requests?status=pending",
+          ),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.gamification.quests,
+        queryFn: () =>
+          apiGetData<{
+            quests: {
+              daily?: Quest[];
+              onboarding?: Quest[];
+            };
+          }>("/api/gamification/quests"),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.gamification.profile,
+        queryFn: () =>
+          apiGetData<{ recentAchievements?: RecentAchievement[] }>(
+            "/api/gamification/profile",
+          ),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.gamification.activity(8),
+        queryFn: () =>
+          apiGetData<{
+            events: {
+              id: string;
+              type: string;
+              description?: string;
+              createdAt: string;
+              xpAwarded?: number;
+            }[];
+          }>("/api/gamification/activity?limit=8"),
+        enabled: dashboardEnabled,
+      },
+    ],
   });
-  const [todayQuests, setTodayQuests] = useState<Quest[]>([]);
-  const [recentAchievements, setRecentAchievements] = useState<
-    RecentAchievement[]
-  >([]);
-  const [activityFeed, setActivityFeed] = useState<
-    {
-      id: string;
-      type: string;
-      description?: string;
-      createdAt: string;
-      xpAwarded?: number;
-    }[]
-  >([]);
+
+  const stats = useMemo(
+    () => ({
+      trees: (treesQuery.data?.trees ?? []).length,
+      persons: personsQuery.data?.total ?? 0,
+      pendingMerges: (mergesQuery.data?.requests ?? []).length,
+    }),
+    [treesQuery.data, personsQuery.data, mergesQuery.data],
+  );
+
+  const todayQuests = useMemo(() => {
+    const q = questsQuery.data?.quests;
+
+    if (!q) return [];
+    const daily = (q.daily ?? []).filter((x) => !x.isCompleted).slice(0, 3);
+    const onboarding = (q.onboarding ?? [])
+      .filter((x) => !x.isCompleted)
+      .slice(0, 2);
+
+    return [...onboarding, ...daily].slice(0, 4);
+  }, [questsQuery.data]);
+
+  const recentAchievements = useMemo(
+    () => profileQuery.data?.recentAchievements?.slice(0, 4) ?? [],
+    [profileQuery.data],
+  );
+
+  const activityFeed = useMemo(
+    () => activityQuery.data?.events ?? [],
+    [activityQuery.data],
+  );
 
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
   }, [user, loading, router]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    Promise.all([
-      fetch("/api/trees?mine=1").then((r) => r.json()),
-      fetch("/api/persons?limit=1").then((r) => r.json()),
-      fetch("/api/merge-requests?status=pending").then((r) => r.json()),
-      fetch("/api/gamification/quests").then((r) => r.json()),
-      fetch("/api/gamification/profile").then((r) => r.json()),
-      fetch("/api/gamification/activity?limit=8").then((r) => r.json()),
-    ]).then(
-      ([
-        treesData,
-        personsData,
-        mergesData,
-        questsData,
-        profileData,
-        activityData,
-      ]) => {
-        setStats({
-          trees: (treesData.data?.trees || []).length,
-          persons: personsData.data?.total || 0,
-          pendingMerges: (mergesData.data?.requests || []).length,
-        });
-
-        const q = questsData.data?.quests;
-
-        if (q) {
-          const daily = (q.daily || [])
-            .filter((x: Quest) => !x.isCompleted)
-            .slice(0, 3);
-          const onboarding = (q.onboarding || [])
-            .filter((x: Quest) => !x.isCompleted)
-            .slice(0, 2);
-
-          setTodayQuests([...onboarding, ...daily].slice(0, 4));
-        }
-
-        setRecentAchievements(
-          profileData.data?.recentAchievements?.slice(0, 4) || [],
-        );
-        setActivityFeed(activityData.data?.events || []);
-      },
-    );
-  }, [user]);
 
   if (loading || !user) {
     return (
@@ -142,8 +176,11 @@ export default function DashboardPage() {
           <div>
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back,{" "}
-              <span className="text-amber-600 dark:text-amber-400">
-                {user.name.split(" ")[0]}
+              <span
+                className="text-amber-600 dark:text-amber-400 inline-block max-w-full truncate align-bottom"
+                title={user.displayName || user.name}
+              >
+                {user.displayName || user.name}
               </span>
             </h1>
             <p className="mt-0.5 text-sm text-muted-foreground">

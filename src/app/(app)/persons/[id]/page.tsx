@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -20,6 +21,14 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import { Trash2 } from "lucide-react";
+
+import {
+  formatPersonDisplayName,
+  getPersonInitials,
+} from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface Relationship {
   id: number;
@@ -72,7 +81,10 @@ interface SuggestedMatch {
   person: {
     id: number;
     firstName: string;
+    middleName?: string;
     lastName: string;
+    maidenName?: string;
+    nickname?: string;
     gender: string;
     birthDate?: string;
     aliveStatus: string;
@@ -106,55 +118,67 @@ const EVENT_ICONS: Record<string, string> = {
 
 export default function PersonDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [person, setPerson] = useState<Person | null>(null);
-  const [relationships, setRelationships] = useState<Relationship[]>([]);
-  const [lifeEvents, setLifeEvents] = useState<LifeEvent[]>([]);
-  const [loading, setLoading] = useState(true);
+  const personIdNum = Number(id);
+
+  const { data: bundle, isPending, refetch } = useQuery({
+    queryKey: queryKeys.persons.detail(id ?? ""),
+    queryFn: () =>
+      apiGetData<{
+        person: Person;
+        relationships: Relationship[];
+        lifeEvents: LifeEvent[];
+      }>(`/api/persons/${id}`),
+    enabled: !!id,
+  });
+
+  const person = bundle?.person ?? null;
+  const relationships = bundle?.relationships ?? [];
+  const lifeEvents = bundle?.lifeEvents ?? [];
+
+  const { data: suggestions = [] } = useQuery({
+    queryKey: queryKeys.persons.suggestions(id ?? ""),
+    queryFn: async () => {
+      const d = await apiGetData<{ suggestions: SuggestedMatch[] }>(
+        `/api/persons/suggestions?personId=${id}`,
+      );
+      return d.suggestions ?? [];
+    },
+    enabled: !!person,
+  });
+
+  const otherIds = useMemo(() => {
+    const s = new Set<number>();
+    for (const r of relationships) {
+      const oid = r.personAId === personIdNum ? r.personBId : r.personAId;
+      s.add(oid);
+    }
+    return [...s];
+  }, [relationships, personIdNum]);
+
+  const relatedQueries = useQueries({
+    queries: otherIds.map((oid) => ({
+      queryKey: queryKeys.persons.detail(oid),
+      queryFn: () =>
+        apiGetData<{ person: Person }>(`/api/persons/${oid}`),
+      staleTime: 60_000,
+    })),
+  });
+
+  const relatedPersons = relatedQueries
+    .map((q) => q.data?.person)
+    .filter((x): x is Person => !!x);
+
   const [showAddRel, setShowAddRel] = useState(false);
   const [showAddEvent, setShowAddEvent] = useState(false);
-  const [relatedPersons, setRelatedPersons] = useState<Person[]>([]);
-  const [suggestions, setSuggestions] = useState<SuggestedMatch[]>([]);
   const [codeCopied, setCodeCopied] = useState(false);
+  const [relRemoveError, setRelRemoveError] = useState("");
+  const [deletingRelId, setDeletingRelId] = useState<number | null>(null);
 
-  const fetchData = async () => {
-    const res = await fetch(`/api/persons/${id}`);
-    const data = await res.json();
-
-    if (res.ok) {
-      setPerson(data.data.person);
-      setRelationships(data.data.relationships || []);
-      setLifeEvents(data.data.lifeEvents || []);
-
-      // Load possible duplicate suggestions in the background
-      fetch(`/api/persons/suggestions?personId=${id}`)
-        .then((r) => r.json())
-        .then((d) => {
-          if (d.success) setSuggestions(d.data.suggestions || []);
-        })
-        .catch(() => {});
-    }
-    setLoading(false);
+  const fetchData = () => {
+    void refetch();
   };
 
-  const fetchRelatedPerson = async (personId: number) => {
-    if (relatedPersons.find((p) => p.id === personId)) return;
-    const res = await fetch(`/api/persons/${personId}`);
-    const data = await res.json();
-
-    if (res.ok) setRelatedPersons((prev) => [...prev, data.data.person]);
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, [id]);
-
-  useEffect(() => {
-    relationships.forEach((r) => {
-      const otherId = r.personAId === Number(id) ? r.personBId : r.personAId;
-
-      fetchRelatedPerson(otherId);
-    });
-  }, [relationships]);
+  const loading = isPending;
 
   const getRelatedPerson = (rel: Relationship) => {
     const otherId =
@@ -179,6 +203,41 @@ export default function PersonDetailPage() {
     };
 
     return labels[type] || type;
+  };
+
+  const removeRelationship = async (
+    rel: Relationship,
+    other: Person | undefined,
+  ) => {
+    const otherName = other
+      ? formatPersonDisplayName(other)
+      : "this person";
+    const linkDesc = relTypeLabel(rel.type, rel);
+    if (
+      !window.confirm(
+        `Remove this relationship?\n\n${linkDesc} ${otherName} (relationship #${rel.id}).\n\nRemoving a parent–child link does not undo sibling links that may have been added automatically. Use + Add afterward to link people correctly (parent must be person A for Parent → Child).`,
+      )
+    ) {
+      return;
+    }
+    setRelRemoveError("");
+    setDeletingRelId(rel.id);
+    try {
+      const res = await fetch(`/api/relationships/${rel.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setRelRemoveError(data.message || "Could not remove relationship.");
+
+        return;
+      }
+      await refetch();
+    } finally {
+      setDeletingRelId(null);
+    }
   };
 
   if (loading) {
@@ -215,13 +274,13 @@ export default function PersonDetailPage() {
                   src={person.photoUrl}
                 />
               ) : (
-                `${person.firstName[0]}${person.lastName[0]}`
+                getPersonInitials(person)
               )}
             </div>
             <div className="flex-1">
               <div className="mb-2 flex flex-wrap items-start gap-2">
                 <h1 className="text-2xl font-bold">
-                  {person.firstName} {person.middleName} {person.lastName}
+                  {formatPersonDisplayName(person)}
                 </h1>
                 {person.isVerified && (
                   <span className="rounded-full border border-emerald-200 bg-emerald-100 px-2 py-0.5 text-xs text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-400">
@@ -234,16 +293,6 @@ export default function PersonDetailPage() {
                   </span>
                 )}
               </div>
-              {person.nickname && (
-                <p className="mb-1 text-primary/90">
-                  &quot;{person.nickname}&quot;
-                </p>
-              )}
-              {person.maidenName && (
-                <p className="text-sm text-muted-foreground">
-                  née {person.maidenName}
-                </p>
-              )}
               <div className="mt-3 flex flex-wrap gap-2">
                 {person.tribeEthnicity && (
                   <Badge>{person.tribeEthnicity}</Badge>
@@ -395,7 +444,16 @@ export default function PersonDetailPage() {
                   + Add
                 </Button>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  To fix a wrong parent–child link: remove it here, check related
+                  people for any incorrect sibling links, then use{" "}
+                  <span className="font-medium text-foreground">+ Add</span> with
+                  Parent → Child (parent as person A).
+                </p>
+                {relRemoveError && (
+                  <p className="text-sm text-destructive">{relRemoveError}</p>
+                )}
                 {relationships.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
                     No relationships added yet.
@@ -406,22 +464,28 @@ export default function PersonDetailPage() {
                       const other = getRelatedPerson(rel);
 
                       return (
-                        <div key={rel.id} className="flex items-center gap-3">
+                        <div
+                          key={rel.id}
+                          className="flex items-center gap-3"
+                          title={`Relationship #${rel.id}`}
+                        >
                           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-muted text-sm font-bold text-primary">
-                            {other
-                              ? `${other.firstName[0]}${other.lastName[0]}`
-                              : "?"}
+                            {other ? getPersonInitials(other) : "?"}
                           </div>
-                          <div className="min-w-0">
+                          <div className="min-w-0 flex-1">
                             <p className="text-xs text-muted-foreground">
                               {relTypeLabel(rel.type, rel)}
+                              <span className="ms-1 font-mono text-[10px] text-muted-foreground/80">
+                                #{rel.id}
+                              </span>
                             </p>
                             {other ? (
                               <Link
                                 className="block truncate text-sm font-medium text-foreground hover:text-primary"
                                 href={`/persons/${other.id}`}
+                                title={formatPersonDisplayName(other)}
                               >
-                                {other.firstName} {other.lastName}
+                                {formatPersonDisplayName(other)}
                               </Link>
                             ) : (
                               <p className="text-sm text-muted-foreground">
@@ -436,6 +500,17 @@ export default function PersonDetailPage() {
                                 </span>
                               )}
                           </div>
+                          <Button
+                            aria-label={`Remove relationship ${rel.id}`}
+                            className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
+                            disabled={deletingRelId !== null}
+                            size="icon"
+                            type="button"
+                            variant="ghost"
+                            onClick={() => removeRelationship(rel, other)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </div>
                       );
                     })}
@@ -472,10 +547,11 @@ export default function PersonDetailPage() {
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <Link
-                            className="text-sm font-medium text-foreground hover:text-primary"
+                            className="line-clamp-2 text-sm font-medium text-foreground hover:text-primary"
                             href={`/persons/${s.person.id}`}
+                            title={formatPersonDisplayName(s.person)}
                           >
-                            {s.person.firstName} {s.person.lastName}
+                            {formatPersonDisplayName(s.person)}
                           </Link>
                           {s.person.personCode && (
                             <p className="font-mono text-xs text-muted-foreground">
@@ -585,7 +661,14 @@ function AddRelationModal({
   });
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<
-    { id: number; firstName: string; lastName: string }[]
+    {
+      id: number;
+      firstName: string;
+      middleName?: string;
+      lastName: string;
+      maidenName?: string;
+      nickname?: string;
+    }[]
   >([]);
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
@@ -677,11 +760,11 @@ function AddRelationModal({
                     type="button"
                     onClick={() => {
                       setForm((f) => ({ ...f, otherPersonId: String(p.id) }));
-                      setSearch(`${p.firstName} ${p.lastName}`);
+                      setSearch(formatPersonDisplayName(p));
                       setResults([]);
                     }}
                   >
-                    {p.firstName} {p.lastName}
+                    {formatPersonDisplayName(p)}
                   </button>
                 ))}
               </div>

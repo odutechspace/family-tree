@@ -22,7 +22,9 @@ const nodeTypes = { person: PersonNode, couple: CoupleNode };
 interface Person {
   id: number;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
+  maidenName?: string | null;
   nickname?: string;
   gender: string;
   birthDate?: string;

@@ -7,6 +7,11 @@ import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
 import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
 import { tryHashPhone } from "@/src/lib/identity";
+import {
+  formatPersonDisplayName,
+  getInitialsFromDisplayName,
+  getPersonInitials,
+} from "@/src/lib/personDisplayName";
 
 export async function GET(_req: NextRequest) {
   await initializeDataSource();
@@ -31,7 +36,24 @@ export async function GET(_req: NextRequest) {
 
   if (!user) return apiError(ApiError.notFound("User not found."));
 
-  return apiSuccess({ user }, "Profile retrieved");
+  let displayName = user.name;
+  let initials = getInitialsFromDisplayName(user.name);
+
+  if (user.linkedPersonId) {
+    const person = await AppDataSource.getRepository(Person).findOne({
+      where: { id: user.linkedPersonId },
+    });
+
+    if (person) {
+      displayName = formatPersonDisplayName(person);
+      initials = getPersonInitials(person);
+    }
+  }
+
+  return apiSuccess(
+    { user: { ...user, displayName, initials } },
+    "Profile retrieved",
+  );
 }
 
 export async function PATCH(req: NextRequest) {

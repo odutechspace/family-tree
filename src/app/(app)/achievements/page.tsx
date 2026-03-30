@@ -1,10 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import Link from "next/link";
 
 import AchievementBadge from "@/src/components/gamification/AchievementBadge";
 import XPBar from "@/src/components/gamification/XPBar";
 import { Button } from "@/src/components/ui/button";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 import { Card, CardContent } from "@/src/components/ui/card";
 
 interface Achievement {
@@ -34,22 +37,22 @@ const CATEGORY_LABELS: Record<string, { label: string; icon: string }> = {
 };
 
 export default function AchievementsPage() {
-  const [achievements, setAchievements] = useState<Achievement[]>([]);
-  const [total, setTotal] = useState(0);
-  const [totalUnlocked, setTotalUnlocked] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState("all");
 
-  useEffect(() => {
-    fetch("/api/gamification/achievements")
-      .then((r) => r.json())
-      .then((d) => {
-        setAchievements(d.data?.achievements || []);
-        setTotal(d.data?.total || 0);
-        setTotalUnlocked(d.data?.totalUnlocked || 0);
-        setLoading(false);
-      });
-  }, []);
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.gamification.achievements,
+    queryFn: () =>
+      apiGetData<{
+        achievements: Achievement[];
+        total: number;
+        totalUnlocked: number;
+      }>("/api/gamification/achievements"),
+  });
+
+  const achievements = data?.achievements ?? [];
+  const total = data?.total ?? 0;
+  const totalUnlocked = data?.totalUnlocked ?? 0;
+  const loading = isPending;
 
   const categories = [
     "all",

@@ -74,7 +74,10 @@ export async function GET(req: NextRequest) {
         ? {
             id: person.id,
             firstName: person.firstName,
+            middleName: person.middleName,
             lastName: person.lastName,
+            maidenName: person.maidenName,
+            nickname: person.nickname,
           }
         : null,
       hasAccount: !!existingUser,

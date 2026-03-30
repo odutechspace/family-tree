@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
@@ -8,13 +8,9 @@ import { Logo } from "@/src/components/icons";
 import { ThemeSwitch } from "@/src/components/theme-switch";
 import { Button } from "@/src/components/ui/button";
 import XPBar from "@/src/components/gamification/XPBar";
+import { useAuth } from "@/src/hooks/useAuth";
 import { cn } from "@/src/lib/utils";
-
-interface AuthUser {
-  id: number;
-  name: string;
-  role: string;
-}
+import { useUiStore } from "@/src/stores/ui-store";
 
 const NAV_LINKS = [
   { href: "/persons", label: "People" },
@@ -27,23 +23,14 @@ const NAV_LINKS = [
 export function Navbar() {
   const pathname = usePathname();
   const { resolvedTheme } = useTheme();
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [menuOpen, setMenuOpen] = useState(false);
+  const { user, logout } = useAuth();
+  const mobileMenuOpen = useUiStore((s) => s.mobileMenuOpen);
+  const toggleMobileMenu = useUiStore((s) => s.toggleMobileMenu);
+  const closeMobileMenu = useUiStore((s) => s.closeMobileMenu);
 
   useEffect(() => {
-    fetch("/api/users/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => setUser(data?.data?.user || null))
-      .catch(() => setUser(null));
-  }, [pathname]);
-
-  const logout = async () => {
-    await fetch("/api/auth/signout", { method: "POST" });
-    setUser(null);
-    window.location.href = "/";
-  };
-
-  if (pathname.startsWith("/auth/")) return null;
+    closeMobileMenu();
+  }, [pathname, closeMobileMenu]);
 
   const navClass = (href: string, exact?: boolean) =>
     cn(
@@ -109,13 +96,13 @@ export function Navbar() {
                 size="sm"
                 variant="secondary"
               >
-                <Link href="/profile" title="Your profile">
+                <Link href="/profile" title={user.displayName || user.name}>
                   <span className="flex items-center gap-2">
                     <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold">
-                      {user.name[0]}
+                      {(user.initials || user.name.slice(0, 2)).slice(0, 2)}
                     </span>
-                    <span className="max-w-[100px] truncate">
-                      {user.name.split(" ")[0]}
+                    <span className="max-w-[140px] truncate">
+                      {user.displayName || user.name}
                     </span>
                   </span>
                 </Link>
@@ -125,7 +112,7 @@ export function Navbar() {
                 className="md:hidden"
                 size="icon"
                 variant="ghost"
-                onClick={() => setMenuOpen(!menuOpen)}
+                onClick={() => toggleMobileMenu()}
               >
                 ☰
               </Button>
@@ -143,7 +130,7 @@ export function Navbar() {
         </div>
       </div>
 
-      {menuOpen && user && (
+      {mobileMenuOpen && user && (
         <div className="md:hidden border-t border-border bg-background px-4 py-3 space-y-1">
           {NAV_LINKS.map((link) => (
             <Link
@@ -153,7 +140,7 @@ export function Navbar() {
                 navClass(link.href),
               )}
               href={link.href}
-              onClick={() => setMenuOpen(false)}
+              onClick={() => closeMobileMenu()}
             >
               {link.label}
             </Link>
@@ -162,7 +149,7 @@ export function Navbar() {
             <Link
               className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
               href="/admin"
-              onClick={() => setMenuOpen(false)}
+              onClick={() => closeMobileMenu()}
             >
               Admin
             </Link>
@@ -170,28 +157,28 @@ export function Navbar() {
           <Link
             className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
             href="/achievements"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => closeMobileMenu()}
           >
             Achievements
           </Link>
           <Link
             className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
             href="/quests"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => closeMobileMenu()}
           >
             Quests
           </Link>
           <Link
             className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
             href="/leaderboard"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => closeMobileMenu()}
           >
             Leaderboard
           </Link>
           <Link
             className="block px-3 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground"
             href="/dashboard"
-            onClick={() => setMenuOpen(false)}
+            onClick={() => closeMobileMenu()}
           >
             Dashboard
           </Link>

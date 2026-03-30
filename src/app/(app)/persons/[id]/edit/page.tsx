@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useQueries } from "@tanstack/react-query";
+import { useEffect, useState } from "react";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -20,6 +21,8 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 const GENDER_OPTIONS = ["male", "female", "other", "unknown"];
 const ALIVE_OPTIONS = ["alive", "deceased", "unknown"];
@@ -33,46 +36,57 @@ interface Clan {
 export default function EditPersonPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
-  const [clans, setClans] = useState<Clan[]>([]);
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    Promise.all([
-      fetch(`/api/persons/${id}`).then((r) => r.json()),
-      fetch("/api/clans").then((r) => r.json()),
-    ]).then(([personData, clanData]) => {
-      const p = personData.data?.person;
+  const [personQ, clansQ] = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.persons.detail(id ?? ""),
+        queryFn: () =>
+          apiGetData<{ person: Record<string, unknown> }>(`/api/persons/${id}`),
+        enabled: !!id,
+      },
+      {
+        queryKey: queryKeys.clans.list({ search: "" }),
+        queryFn: () => apiGetData<{ clans: Clan[] }>("/api/clans"),
+      },
+    ],
+  });
 
-      if (p) {
-        setForm({
-          firstName: p.firstName || "",
-          middleName: p.middleName || "",
-          lastName: p.lastName || "",
-          maidenName: p.maidenName || "",
-          nickname: p.nickname || "",
-          gender: p.gender || "unknown",
-          birthDate: p.birthDate ? p.birthDate.split("T")[0] : "",
-          birthPlace: p.birthPlace || "",
-          aliveStatus: p.aliveStatus || "unknown",
-          deathDate: p.deathDate ? p.deathDate.split("T")[0] : "",
-          deathPlace: p.deathPlace || "",
-          photoUrl: p.photoUrl || "",
-          biography: p.biography || "",
-          oralHistory: p.oralHistory || "",
-          clanId: p.clanId ? String(p.clanId) : "",
-          tribeEthnicity: p.tribeEthnicity || "",
-          totem: p.totem || "",
-          originVillage: p.originVillage || "",
-          originCountry: p.originCountry || "",
-        });
-      }
-      setClans(clanData.data?.clans || []);
-      setLoading(false);
+  const clans = clansQ.data?.clans ?? [];
+  const loading = personQ.isPending || clansQ.isPending;
+
+  useEffect(() => {
+    const p = personQ.data?.person;
+    if (!p) return;
+    setForm({
+      firstName: (p.firstName as string) || "",
+      middleName: (p.middleName as string) || "",
+      lastName: (p.lastName as string) || "",
+      maidenName: (p.maidenName as string) || "",
+      nickname: (p.nickname as string) || "",
+      gender: (p.gender as string) || "unknown",
+      birthDate: p.birthDate
+        ? String(p.birthDate).split("T")[0]
+        : "",
+      birthPlace: (p.birthPlace as string) || "",
+      aliveStatus: (p.aliveStatus as string) || "unknown",
+      deathDate: p.deathDate
+        ? String(p.deathDate).split("T")[0]
+        : "",
+      deathPlace: (p.deathPlace as string) || "",
+      photoUrl: (p.photoUrl as string) || "",
+      biography: (p.biography as string) || "",
+      oralHistory: (p.oralHistory as string) || "",
+      clanId: p.clanId ? String(p.clanId) : "",
+      tribeEthnicity: (p.tribeEthnicity as string) || "",
+      totem: (p.totem as string) || "",
+      originVillage: (p.originVillage as string) || "",
+      originCountry: (p.originCountry as string) || "",
     });
-  }, [id]);
+  }, [personQ.data]);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 

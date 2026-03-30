@@ -1,6 +1,13 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 
+/**
+ * Schema in dev: `synchronize` is true when NODE_ENV !== "production", so the
+ * first API request that opens the pool will ALTER tables to match entities.
+ * There is no `npm run migration:*` in this repo yet — production deploys need
+ * either migrations or a manual schema sync before turning synchronize off.
+ */
+
 const User = require("@/src/api/entities/User").User;
 const Person = require("@/src/api/entities/Person").Person;
 const Relationship = require("@/src/api/entities/Relationship").Relationship;

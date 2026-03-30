@@ -26,23 +26,56 @@ export async function GET(
   if (!tree) return apiError(ApiError.notFound("Family tree not found."));
 
   const members = await memberRepo.find({ where: { treeId: Number(id) } });
-  const personIds = members
+  const memberPersonIds = members
     .filter((m) => m.personId > 0)
     .map((m) => m.personId);
+
+  /**
+   * Include every person reachable from tree members via relationships.
+   * Otherwise someone can be parent/child of a member (correct `relationship`
+   * row) but never added to `family_tree_member` — e.g. invite linked only
+   * the user, or relationship added from the person profile — and they would
+   * vanish from the tree canvas because the old query required BOTH ends to be
+   * members.
+   */
+  const expandedPersonIds = new Set(memberPersonIds);
+  const MAX_RELATIONSHIP_EXPANSION_ROUNDS = 30;
+
+  for (let round = 0; round < MAX_RELATIONSHIP_EXPANSION_ROUNDS; round++) {
+    const ids = [...expandedPersonIds];
+
+    if (ids.length === 0) break;
+
+    const touching = await relRepo
+      .createQueryBuilder("r")
+      .where("r.personAId IN (:...ids) OR r.personBId IN (:...ids)", { ids })
+      .getMany();
+
+    const before = expandedPersonIds.size;
+
+    for (const r of touching) {
+      expandedPersonIds.add(r.personAId);
+      expandedPersonIds.add(r.personBId);
+    }
+
+    if (expandedPersonIds.size === before) break;
+  }
+
+  const allPersonIds = [...expandedPersonIds];
 
   let persons: Person[] = [];
   let relationships: Relationship[] = [];
 
-  if (personIds.length > 0) {
+  if (allPersonIds.length > 0) {
     persons = await personRepo
       .createQueryBuilder("p")
-      .where("p.id IN (:...ids)", { ids: personIds })
+      .where("p.id IN (:...ids)", { ids: allPersonIds })
       .getMany();
 
     relationships = await relRepo
       .createQueryBuilder("r")
       .where("r.personAId IN (:...ids) AND r.personBId IN (:...ids)", {
-        ids: personIds,
+        ids: allPersonIds,
       })
       .getMany();
   }

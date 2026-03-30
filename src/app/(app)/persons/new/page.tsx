@@ -1,5 +1,6 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
@@ -20,6 +21,8 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 const GENDER_OPTIONS = ["male", "female", "other", "unknown"];
 const ALIVE_OPTIONS = ["alive", "deceased", "unknown"];
@@ -34,7 +37,11 @@ function NewPersonForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const treeId = searchParams.get("treeId");
-  const [clans, setClans] = useState<Clan[]>([]);
+  const { data: clansData } = useQuery({
+    queryKey: queryKeys.clans.list({ search: "" }),
+    queryFn: () => apiGetData<{ clans: Clan[] }>("/api/clans"),
+  });
+  const clans = clansData?.clans ?? [];
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({
@@ -58,12 +65,6 @@ function NewPersonForm() {
     originVillage: "",
     originCountry: "",
   });
-
-  useEffect(() => {
-    fetch("/api/clans")
-      .then((r) => r.json())
-      .then((d) => setClans(d.data?.clans || []));
-  }, []);
 
   const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
 

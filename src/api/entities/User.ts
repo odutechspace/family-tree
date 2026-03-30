@@ -41,7 +41,7 @@ export class User {
    * Matched against Person.phoneHash to auto-link when a user registers
    * or updates their phone, or when a person record is given a phone number.
    */
-  @Column({ nullable: true })
+  @Column({ type: "varchar", length: 64, nullable: true })
   phoneHash: string | null;
 
   @CreateDateColumn()

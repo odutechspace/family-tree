@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/src/components/ui/card";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface XPProfile {
   totalXP: number;
@@ -37,13 +38,17 @@ const RARITY_RING = [
 ];
 
 export default function XPBar({ compact = false }: { compact?: boolean }) {
-  const [profile, setProfile] = useState<XPProfile | null>(null);
+  const { data: profile } = useQuery({
+    queryKey: queryKeys.gamification.profile,
+    queryFn: async () => {
+      const res = await fetch("/api/gamification/profile");
 
-  useEffect(() => {
-    fetch("/api/gamification/profile")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setProfile(d?.data || null));
-  }, []);
+      if (!res.ok) return null;
+      const j = await res.json();
+
+      return (j.data || null) as XPProfile | null;
+    },
+  });
 
   if (!profile) return null;
 

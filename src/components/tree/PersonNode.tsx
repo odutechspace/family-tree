@@ -3,10 +3,17 @@ import { memo } from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import Link from "next/link";
 
+import {
+  formatPersonDisplayName,
+  getPersonInitials,
+} from "@/src/lib/personDisplayName";
+
 export interface PersonNodeData {
   id: number;
   firstName: string;
+  middleName?: string | null;
   lastName: string;
+  maidenName?: string | null;
   nickname?: string;
   gender: string;
   birthDate?: string;
@@ -20,7 +27,10 @@ export interface PersonNodeData {
     person: {
       id: number;
       firstName: string;
+      middleName?: string | null;
       lastName: string;
+      maidenName?: string | null;
+      nickname?: string;
       gender: string;
       aliveStatus: string;
     },
@@ -29,7 +39,8 @@ export interface PersonNodeData {
 }
 
 function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
-  const initials = `${data.firstName?.[0] || ""}${data.lastName?.[0] || ""}`;
+  const fullName = formatPersonDisplayName(data);
+  const initials = getPersonInitials(data);
   const isDeceased = data.aliveStatus === "deceased";
   const genderBorder =
     data.gender === "male"
@@ -54,7 +65,10 @@ function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
   const person = {
     id: data.id,
     firstName: data.firstName,
+    middleName: data.middleName,
     lastName: data.lastName,
+    maidenName: data.maidenName,
+    nickname: data.nickname,
     gender: data.gender,
     aliveStatus: data.aliveStatus,
   };
@@ -90,15 +104,11 @@ function PersonNode({ data, selected }: NodeProps<PersonNodeData>) {
           </div>
           <div className="text-center">
             <p
-              className={`text-xs font-semibold leading-tight ${isDeceased ? "text-muted-foreground" : "text-foreground"}`}
+              className={`line-clamp-3 text-xs font-semibold leading-tight ${isDeceased ? "text-muted-foreground" : "text-foreground"}`}
+              title={fullName}
             >
-              {data.firstName} {data.lastName}
+              {fullName}
             </p>
-            {data.nickname && (
-              <p className="text-xs text-primary/80">
-                &quot;{data.nickname}&quot;
-              </p>
-            )}
             {data.unionOrder && data.unionOrder > 1 && (
               <span className="text-xs text-primary">
                 Wife #{data.unionOrder}

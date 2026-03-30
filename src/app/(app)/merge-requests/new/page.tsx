@@ -1,4 +1,5 @@
 "use client";
+import { useQuery } from "@tanstack/react-query";
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
@@ -13,11 +14,17 @@ import {
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import { Textarea } from "@/src/components/ui/textarea";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface Person {
   id: number;
   firstName: string;
+  middleName?: string;
   lastName: string;
+  maidenName?: string;
+  nickname?: string;
 }
 interface FamilyTree {
   id: number;
@@ -69,6 +76,12 @@ function NewMergeRequestForm() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  const { data: myTreesData } = useQuery({
+    queryKey: queryKeys.trees.list({ mine: true }),
+    queryFn: () => apiGetData<{ trees: FamilyTree[] }>("/api/trees?mine=1"),
+  });
+  const myTrees = myTreesData?.trees ?? [];
+
   const searchPersons = async (
     field: "source" | "target" | "connecting",
     q: string,
@@ -84,24 +97,6 @@ function NewMergeRequestForm() {
     const data = await res.json();
 
     setResults((r) => ({ ...r, [field]: data.data?.persons || [] }));
-  };
-
-  const searchTrees = async (field: "sourceTree" | "targetTree", q: string) => {
-    if (!q) {
-      setResults((r) => ({ ...r, [field]: [] }));
-
-      return;
-    }
-    const res = await fetch(`/api/trees?mine=1`);
-    const data = await res.json();
-    const all = data.data?.trees || [];
-
-    setResults((r) => ({
-      ...r,
-      [field]: all.filter((t: FamilyTree) =>
-        t.name.toLowerCase().includes(q.toLowerCase()),
-      ),
-    }));
   };
 
   useEffect(() => {
@@ -123,21 +118,38 @@ function NewMergeRequestForm() {
     return () => clearTimeout(t);
   }, [searches.connecting]);
   useEffect(() => {
-    const t = setTimeout(
-      () => searchTrees("sourceTree", searches.sourceTree),
-      300,
-    );
-
+    const t = setTimeout(() => {
+      const q = searches.sourceTree.trim().toLowerCase();
+      if (!q) {
+        setResults((r) => ({ ...r, sourceTree: [] }));
+        return;
+      }
+      setResults((r) => ({
+        ...r,
+        sourceTree: myTrees.filter((tree) =>
+          tree.name.toLowerCase().includes(q),
+        ),
+      }));
+    }, 300);
     return () => clearTimeout(t);
-  }, [searches.sourceTree]);
+  }, [searches.sourceTree, myTrees]);
+
   useEffect(() => {
-    const t = setTimeout(
-      () => searchTrees("targetTree", searches.targetTree),
-      300,
-    );
-
+    const t = setTimeout(() => {
+      const q = searches.targetTree.trim().toLowerCase();
+      if (!q) {
+        setResults((r) => ({ ...r, targetTree: [] }));
+        return;
+      }
+      setResults((r) => ({
+        ...r,
+        targetTree: myTrees.filter((tree) =>
+          tree.name.toLowerCase().includes(q),
+        ),
+      }));
+    }, 300);
     return () => clearTimeout(t);
-  }, [searches.targetTree]);
+  }, [searches.targetTree, myTrees]);
 
   const PersonSearch = ({
     field,
@@ -170,12 +182,12 @@ function NewMergeRequestForm() {
                 setForm((f) => ({ ...f, [formKey]: String(p.id) }));
                 setLabels((l) => ({
                   ...l,
-                  [field]: `${p.firstName} ${p.lastName}`,
+                  [field]: formatPersonDisplayName(p),
                 }));
                 setResults((r) => ({ ...r, [field]: [] }));
               }}
             >
-              {p.firstName} {p.lastName}
+              {formatPersonDisplayName(p)}
             </button>
           ))}
         </div>

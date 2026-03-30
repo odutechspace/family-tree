@@ -1,9 +1,13 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
 import { useAuth } from "@/src/hooks/useAuth";
+import { getInitialsFromDisplayName } from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface User {
   id: number;
@@ -12,6 +16,7 @@ interface User {
   role: string;
   createdAt: string;
   profilePhotoUrl?: string;
+  displayName?: string;
 }
 interface MergeRequest {
   id: number;
@@ -28,54 +33,91 @@ interface MergeRequest {
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [users, setUsers] = useState<User[]>([]);
-  const [pendingMerges, setPendingMerges] = useState<MergeRequest[]>([]);
-  const [stats, setStats] = useState({
-    persons: 0,
-    trees: 0,
-    clans: 0,
-    mergeRequests: 0,
-  });
-  const [loadingData, setLoadingData] = useState(true);
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState<"overview" | "users" | "merges">(
     "overview",
   );
+  const adminEnabled = user?.role === "admin";
+
+  const [usersQ, mergesQ, personsQ, treesQ, clansQ] = useQueries({
+    queries: [
+      {
+        queryKey: queryKeys.admin.users,
+        queryFn: () => apiGetData<{ users: User[] }>("/api/users"),
+        enabled: adminEnabled,
+      },
+      {
+        queryKey: queryKeys.mergeRequests.list({
+          all: true,
+          status: "pending",
+        }),
+        queryFn: () =>
+          apiGetData<{ requests: MergeRequest[] }>(
+            "/api/merge-requests?all=1&status=pending",
+          ),
+        enabled: adminEnabled,
+      },
+      {
+        queryKey: queryKeys.persons.summary({ limit: 1 }),
+        queryFn: () => apiGetData<{ total: number }>("/api/persons?limit=1"),
+        enabled: adminEnabled,
+      },
+      {
+        queryKey: queryKeys.admin.treesAll,
+        queryFn: () => apiGetData<{ trees: unknown[] }>("/api/trees"),
+        enabled: adminEnabled,
+      },
+      {
+        queryKey: queryKeys.admin.clansAll,
+        queryFn: () => apiGetData<{ clans: unknown[] }>("/api/clans"),
+        enabled: adminEnabled,
+      },
+    ],
+  });
+
+  const users = usersQ.data?.users ?? [];
+  const pendingMerges = mergesQ.data?.requests ?? [];
+  const stats = useMemo(
+    () => ({
+      persons: personsQ.data?.total ?? 0,
+      trees: (treesQ.data?.trees ?? []).length,
+      clans: (clansQ.data?.clans ?? []).length,
+      mergeRequests: pendingMerges.length,
+    }),
+    [personsQ.data, treesQ.data, clansQ.data, pendingMerges],
+  );
+
+  const loadingData =
+    adminEnabled &&
+    (usersQ.isPending ||
+      mergesQ.isPending ||
+      personsQ.isPending ||
+      treesQ.isPending ||
+      clansQ.isPending);
 
   useEffect(() => {
     if (!loading && user?.role !== "admin") {
       router.push("/dashboard");
     }
-  }, [user, loading]);
+  }, [user, loading, router]);
 
-  useEffect(() => {
-    if (user?.role !== "admin") return;
-
-    Promise.all([
-      fetch("/api/users").then((r) => r.json()),
-      fetch("/api/merge-requests?all=1&status=pending").then((r) => r.json()),
-      fetch("/api/persons?limit=1").then((r) => r.json()),
-      fetch("/api/trees").then((r) => r.json()),
-      fetch("/api/clans").then((r) => r.json()),
-    ]).then(([usersData, mergesData, personsData, treesData, clansData]) => {
-      setUsers(usersData.data?.users || []);
-      setPendingMerges(mergesData.data?.requests || []);
-      setStats({
-        persons: personsData.data?.total || 0,
-        trees: (treesData.data?.trees || []).length,
-        clans: (clansData.data?.clans || []).length,
-        mergeRequests: (mergesData.data?.requests || []).length,
+  const updateRoleMutation = useMutation({
+    mutationFn: async (vars: { userId: number; role: string }) => {
+      const res = await fetch("/api/users", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: vars.userId, role: vars.role }),
       });
-      setLoadingData(false);
-    });
-  }, [user]);
 
-  const updateRole = async (userId: number, role: string) => {
-    await fetch("/api/users", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId, role }),
-    });
-    setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, role } : u)));
+      if (!res.ok) throw new Error("Failed to update role");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.admin.users });
+    },
+  });
+
+  const updateRole = (userId: number, role: string) => {
+    updateRoleMutation.mutate({ userId, role });
   };
 
   if (loading || loadingData)
@@ -164,10 +206,15 @@ export default function AdminPage() {
               {users.map((u) => (
                 <div key={u.id} className="flex items-center gap-4 px-4 py-3">
                   <div className="w-9 h-9 rounded-full bg-stone-700 flex items-center justify-center text-amber-400 font-bold text-sm flex-shrink-0">
-                    {u.name[0]}
+                    {getInitialsFromDisplayName(u.displayName || u.name)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium truncate">{u.name}</p>
+                    <p
+                      className="text-white font-medium truncate"
+                      title={u.displayName || u.name}
+                    >
+                      {u.displayName || u.name}
+                    </p>
                     <p className="text-stone-400 text-xs truncate">{u.email}</p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -235,18 +282,7 @@ export default function AdminPage() {
                         {new Date(mr.createdAt).toLocaleDateString()}
                       </p>
                     </div>
-                    <AdminReviewButtons
-                      mergeRequestId={mr.id}
-                      onReviewed={() => {
-                        setPendingMerges((prev) =>
-                          prev.filter((m) => m.id !== mr.id),
-                        );
-                        setStats((s) => ({
-                          ...s,
-                          mergeRequests: s.mergeRequests - 1,
-                        }));
-                      }}
-                    />
+                    <AdminReviewButtons mergeRequestId={mr.id} />
                   </div>
                 </div>
               ))
@@ -297,13 +333,8 @@ function StatCard({
   return <Link href={href}>{inner}</Link>;
 }
 
-function AdminReviewButtons({
-  mergeRequestId,
-  onReviewed,
-}: {
-  mergeRequestId: number;
-  onReviewed: () => void;
-}) {
+function AdminReviewButtons({ mergeRequestId }: { mergeRequestId: number }) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
 
   const review = async (decision: "approved" | "rejected") => {
@@ -320,7 +351,15 @@ function AdminReviewButtons({
       body: JSON.stringify({ decision }),
     });
     setLoading(false);
-    onReviewed();
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.mergeRequests.list({ all: true, status: "pending" }),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.mergeRequests.list({ all: true }),
+    });
+    queryClient.invalidateQueries({
+      queryKey: queryKeys.mergeRequests.list({ all: false }),
+    });
   };
 
   return (

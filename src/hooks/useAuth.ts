@@ -1,5 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+import { queryKeys } from "@/src/lib/query-keys";
 
 export interface AuthUser {
   id: number;
@@ -8,41 +11,47 @@ export interface AuthUser {
   role: string;
   profilePhotoUrl?: string | null;
   linkedPersonId?: number | null;
+  /** Full structured name when linked to a Person, else matches `name`. */
+  displayName?: string;
+  /** Two-letter avatar initials. */
+  initials?: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
+async function fetchAuthUser(): Promise<AuthUser | null> {
+  const res = await fetch("/api/users/me");
+
+  if (!res.ok) return null;
+  const json = (await res.json()) as { data?: { user?: AuthUser } };
+
+  return json.data?.user ?? null;
+}
+
 export function useAuth() {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
 
-  const fetchUser = useCallback(async () => {
-    try {
-      const res = await fetch("/api/users/me");
+  const query = useQuery({
+    queryKey: queryKeys.auth.me,
+    queryFn: fetchAuthUser,
+  });
 
-      if (res.ok) {
-        const data = await res.json();
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await fetch("/api/auth/signout", { method: "POST" });
+    },
+    onSettled: () => {
+      queryClient.removeQueries({ queryKey: queryKeys.auth.me });
+      window.location.href = "/auth/login";
+    },
+  });
 
-        setUser(data.data?.user || null);
-      } else {
-        setUser(null);
-      }
-    } catch {
-      setUser(null);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
-
-  const logout = async () => {
-    await fetch("/api/auth/signout", { method: "POST" });
-    setUser(null);
-    window.location.href = "/auth/login";
+  return {
+    user: query.data ?? null,
+    loading: query.isPending,
+    refetch: () => query.refetch(),
+    logout: () => {
+      logoutMutation.mutate();
+    },
   };
-
-  return { user, loading, refetch: fetchUser, logout };
 }

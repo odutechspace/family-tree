@@ -1,11 +1,14 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 import Link from "next/link";
 
 import { useAuth } from "@/src/hooks/useAuth";
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
 import { Textarea } from "@/src/components/ui/textarea";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface MergeRequest {
   id: number;
@@ -32,25 +35,21 @@ const STATUS_STYLES: Record<string, string> = {
 };
 
 export default function MergeRequestsPage() {
-  const { user } = useAuth();
-  const [requests, setRequests] = useState<MergeRequest[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { user, loading: authLoading } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
+  const isAdmin = user?.role === "admin";
 
-  const fetchRequests = async () => {
-    setLoading(true);
-    const isAdmin = user?.role === "admin";
-    const url = `/api/merge-requests${isAdmin ? "?all=1" : ""}`;
-    const res = await fetch(url);
-    const data = await res.json();
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.mergeRequests.list({ all: isAdmin }),
+    queryFn: () =>
+      apiGetData<{ requests: MergeRequest[] }>(
+        `/api/merge-requests${isAdmin ? "?all=1" : ""}`,
+      ),
+    enabled: !authLoading && !!user,
+  });
 
-    setRequests(data.data?.requests || []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    if (user !== undefined) fetchRequests();
-  }, [user]);
+  const requests = data?.requests ?? [];
+  const loading = authLoading || (isPending && !!user);
 
   const filtered =
     statusFilter === "all"
@@ -145,10 +144,7 @@ export default function MergeRequestsPage() {
                     </div>
 
                     {user?.role === "admin" && mr.status === "pending" && (
-                      <ReviewButtons
-                        mergeRequestId={mr.id}
-                        onReviewed={fetchRequests}
-                      />
+                      <ReviewButtons mergeRequestId={mr.id} />
                     )}
                   </div>
                 </CardContent>
@@ -161,13 +157,8 @@ export default function MergeRequestsPage() {
   );
 }
 
-function ReviewButtons({
-  mergeRequestId,
-  onReviewed,
-}: {
-  mergeRequestId: number;
-  onReviewed: () => void;
-}) {
+function ReviewButtons({ mergeRequestId }: { mergeRequestId: number }) {
+  const queryClient = useQueryClient();
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState("");
   const [showNotes, setShowNotes] = useState(false);
@@ -175,16 +166,51 @@ function ReviewButtons({
     "approved" | "rejected" | null
   >(null);
 
-  const submit = async (decision: "approved" | "rejected") => {
+  const reviewMutation = useMutation({
+    mutationFn: async (vars: {
+      decision: "approved" | "rejected";
+      reviewNotes: string;
+    }) => {
+      const res = await fetch(`/api/merge-requests/${mergeRequestId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          decision: vars.decision,
+          reviewNotes: vars.reviewNotes,
+        }),
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        throw new Error(
+          (data as { message?: string }).message || "Review failed.",
+        );
+      }
+
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.mergeRequests.list({ all: true }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.mergeRequests.list({ all: false }),
+      });
+    },
+  });
+
+  const submit = (decision: "approved" | "rejected") => {
     setLoading(true);
-    await fetch(`/api/merge-requests/${mergeRequestId}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision, reviewNotes: notes }),
-    });
-    setLoading(false);
-    setShowNotes(false);
-    onReviewed();
+    reviewMutation.mutate(
+      { decision, reviewNotes: notes },
+      {
+        onSettled: () => {
+          setLoading(false);
+          setShowNotes(false);
+          setNotes("");
+        },
+      },
+    );
   };
 
   if (showNotes) {
@@ -204,7 +230,7 @@ function ReviewButtons({
             size="sm"
             type="button"
             variant={pendingDecision === "approved" ? "default" : "destructive"}
-            onClick={() => submit(pendingDecision!)}
+            onClick={() => pendingDecision && submit(pendingDecision)}
           >
             Confirm {pendingDecision}
           </Button>

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 
@@ -10,6 +10,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import {
+  formatPersonDisplayName,
+  getPersonInitials,
+} from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface Clan {
   id: number;
@@ -26,7 +32,10 @@ interface Clan {
 interface Person {
   id: number;
   firstName: string;
+  middleName?: string;
   lastName: string;
+  maidenName?: string;
+  nickname?: string;
   gender: string;
   aliveStatus: string;
 }
@@ -50,19 +59,17 @@ function Badge({ children }: { children: React.ReactNode }) {
 
 export default function ClanDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [clan, setClan] = useState<Clan | null>(null);
-  const [members, setMembers] = useState<Person[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetch(`/api/clans/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setClan(data.data?.clan || null);
-        setMembers(data.data?.members || []);
-        setLoading(false);
-      });
-  }, [id]);
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.clans.detail(id ?? ""),
+    queryFn: () =>
+      apiGetData<{ clan: Clan; members: Person[] }>(`/api/clans/${id}`),
+    enabled: !!id,
+  });
+
+  const clan = data?.clan ?? null;
+  const members = data?.members ?? [];
+  const loading = isPending;
 
   if (loading) {
     return (
@@ -173,17 +180,17 @@ export default function ClanDetailPage() {
                     {members.slice(0, 10).map((p) => (
                       <Link
                         key={p.id}
-                        className="flex items-center gap-2 transition-colors hover:text-primary"
+                        className="flex min-w-0 items-center gap-2 transition-colors hover:text-primary"
                         href={`/persons/${p.id}`}
+                        title={formatPersonDisplayName(p)}
                       >
                         <div
-                          className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${genderAvatar(p.gender)}`}
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${genderAvatar(p.gender)}`}
                         >
-                          {p.firstName[0]}
-                          {p.lastName[0]}
+                          {getPersonInitials(p)}
                         </div>
-                        <span className="text-sm text-foreground">
-                          {p.firstName} {p.lastName}
+                        <span className="truncate text-sm text-foreground">
+                          {formatPersonDisplayName(p)}
                         </span>
                         {p.aliveStatus === "deceased" && (
                           <span className="ml-auto text-xs text-muted-foreground">

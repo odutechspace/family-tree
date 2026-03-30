@@ -1,10 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { useAuth, type AuthUser } from "@/src/hooks/useAuth";
+import { useAuth } from "@/src/hooks/useAuth";
 import { Button } from "@/src/components/ui/button";
 import {
   Card,
@@ -22,220 +27,184 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/src/components/ui/select";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface PersonOption {
   id: number;
   firstName: string;
+  middleName?: string;
   lastName: string;
+  maidenName?: string;
   nickname?: string;
-}
-
-function formatPerson(p: PersonOption) {
-  const nick = p.nickname ? ` "${p.nickname}"` : "";
-
-  return `${p.firstName}${nick} ${p.lastName}`;
 }
 
 const NONE = "__none__";
 
 export default function ProfilePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { user, loading, refetch, logout } = useAuth();
-
-  const [profile, setProfile] = useState<AuthUser | null>(null);
-  const [loadError, setLoadError] = useState("");
 
   const [name, setName] = useState("");
   const [profilePhotoUrl, setProfilePhotoUrl] = useState("");
   const [linkedPersonId, setLinkedPersonId] = useState<string>("");
-
   const [personSearch, setPersonSearch] = useState("");
-  const [personOptions, setPersonOptions] = useState<PersonOption[]>([]);
-  const [linkedLabel, setLinkedLabel] = useState<string | null>(null);
+  const [debouncedPersonSearch, setDebouncedPersonSearch] = useState("");
 
   const [profileMsg, setProfileMsg] = useState("");
   const [profileErr, setProfileErr] = useState("");
-  const [savingProfile, setSavingProfile] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [pwdMsg, setPwdMsg] = useState("");
   const [pwdErr, setPwdErr] = useState("");
-  const [savingPwd, setSavingPwd] = useState(false);
-
-  const loadProfile = useCallback(async () => {
-    setLoadError("");
-    try {
-      const res = await fetch("/api/users/me");
-      const data = await res.json();
-
-      if (!res.ok) {
-        setLoadError(data.message || "Could not load profile.");
-
-        return;
-      }
-      const u = data.data?.user as AuthUser;
-
-      setProfile(u);
-      setName(u.name);
-      setProfilePhotoUrl(u.profilePhotoUrl || "");
-      setLinkedPersonId(
-        u.linkedPersonId != null ? String(u.linkedPersonId) : "",
-      );
-    } catch {
-      setLoadError("Could not load profile.");
-    }
-  }, []);
 
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
   }, [user, loading, router]);
 
   useEffect(() => {
-    if (user) loadProfile();
-  }, [user, loadProfile]);
+    if (!user) return;
+    setName(user.name);
+    setProfilePhotoUrl(user.profilePhotoUrl || "");
+    setLinkedPersonId(
+      user.linkedPersonId != null ? String(user.linkedPersonId) : "",
+    );
+  }, [user]);
 
   useEffect(() => {
-    const id = profile?.linkedPersonId;
-
-    if (id == null) {
-      setLinkedLabel(null);
-
-      return;
-    }
-    fetch(`/api/persons/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const p = data.data?.person as PersonOption | undefined;
-
-        setLinkedLabel(p ? formatPerson(p) : `Person #${id}`);
-      })
-      .catch(() => setLinkedLabel(`Person #${id}`));
-  }, [profile?.linkedPersonId]);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      fetch(`/api/persons?search=${encodeURIComponent(personSearch)}&limit=30`)
-        .then((r) => r.json())
-        .then((data) => setPersonOptions(data.data?.persons || []))
-        .catch(() => setPersonOptions([]));
-    }, 250);
-
+    const t = setTimeout(() => setDebouncedPersonSearch(personSearch), 250);
     return () => clearTimeout(t);
   }, [personSearch]);
 
-  useEffect(() => {
-    const id = profile?.linkedPersonId;
+  const { data: searchData } = useQuery({
+    queryKey: queryKeys.persons.directory({
+      search: debouncedPersonSearch,
+      limit: 30,
+    }),
+    queryFn: () =>
+      apiGetData<{ persons: PersonOption[] }>(
+        `/api/persons?search=${encodeURIComponent(debouncedPersonSearch)}&limit=30`,
+      ),
+  });
 
-    if (id == null) return;
-    fetch(`/api/persons/${id}`)
-      .then((r) => r.json())
-      .then((data) => {
-        const p = data.data?.person as PersonOption | undefined;
+  const linkedNumeric =
+    linkedPersonId === "" ? null : Number(linkedPersonId);
+  const linkedValid =
+    linkedNumeric != null && !Number.isNaN(linkedNumeric);
 
-        if (!p) return;
-        setPersonOptions((prev) =>
-          prev.some((x) => x.id === p.id) ? prev : [p, ...prev],
-        );
-      })
-      .catch(() => {});
-  }, [profile?.linkedPersonId]);
+  const { data: linkedBundle } = useQuery({
+    queryKey: queryKeys.persons.detail(linkedNumeric ?? 0),
+    queryFn: () =>
+      apiGetData<{ person: PersonOption }>(`/api/persons/${linkedNumeric}`),
+    enabled: linkedValid,
+  });
 
-  const onSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setProfileErr("");
-    setProfileMsg("");
-    setSavingProfile(true);
-    try {
-      const body: Record<string, unknown> = { name: name.trim() };
+  const linkedLabel = linkedValid
+    ? linkedBundle?.person
+      ? formatPersonDisplayName(linkedBundle.person)
+      : `Person #${linkedNumeric}`
+    : null;
 
-      body.profilePhotoUrl = profilePhotoUrl.trim() || null;
-      if (linkedPersonId === "") {
-        body.linkedPersonId = null;
-      } else {
-        const n = Number(linkedPersonId);
+  const personOptions = useMemo(() => {
+    const fromSearch = searchData?.persons ?? [];
+    const p = linkedBundle?.person;
+    if (!p) return fromSearch;
+    return fromSearch.some((x) => x.id === p.id) ? fromSearch : [p, ...fromSearch];
+  }, [searchData, linkedBundle]);
 
-        if (Number.isNaN(n)) {
-          setProfileErr("Choose a valid person or clear the link.");
-          setSavingProfile(false);
-
-          return;
-        }
-        body.linkedPersonId = n;
-      }
+  const saveProfileMutation = useMutation({
+    mutationFn: async (body: Record<string, unknown>) => {
       const res = await fetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
       const data = await res.json();
-
       if (!res.ok) {
-        setProfileErr(data.message || "Update failed.");
-      } else {
-        setProfileMsg("Profile saved.");
-        await refetch();
-        await loadProfile();
+        throw new Error(data.message || "Update failed.");
       }
-    } catch {
-      setProfileErr("Something went wrong.");
-    } finally {
-      setSavingProfile(false);
+      return data;
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+      await refetch();
+    },
+  });
+
+  const changePasswordMutation = useMutation({
+    mutationFn: async (body: { currentPassword: string; newPassword: string }) => {
+      const res = await fetch("/api/users/me/password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Could not update password.");
+      }
+      return data;
+    },
+  });
+
+  const onSaveProfile = (e: React.FormEvent) => {
+    e.preventDefault();
+    setProfileErr("");
+    setProfileMsg("");
+    const body: Record<string, unknown> = { name: name.trim() };
+    body.profilePhotoUrl = profilePhotoUrl.trim() || null;
+    if (linkedPersonId === "") {
+      body.linkedPersonId = null;
+    } else {
+      const n = Number(linkedPersonId);
+      if (Number.isNaN(n)) {
+        setProfileErr("Choose a valid person or clear the link.");
+        return;
+      }
+      body.linkedPersonId = n;
     }
+    saveProfileMutation.mutate(body, {
+      onSuccess: () => setProfileMsg("Profile saved."),
+      onError: (err) =>
+        setProfileErr(err instanceof Error ? err.message : "Update failed."),
+    });
   };
 
-  const onChangePassword = async (e: React.FormEvent) => {
+  const onChangePassword = (e: React.FormEvent) => {
     e.preventDefault();
     setPwdErr("");
     setPwdMsg("");
     if (newPassword !== confirmPassword) {
       setPwdErr("New passwords do not match.");
-
       return;
     }
-    setSavingPwd(true);
-    try {
-      const res = await fetch("/api/users/me/password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      const data = await res.json();
-
-      if (!res.ok) {
-        setPwdErr(data.message || "Could not update password.");
-      } else {
-        setPwdMsg("Password updated.");
-        setCurrentPassword("");
-        setNewPassword("");
-        setConfirmPassword("");
-      }
-    } catch {
-      setPwdErr("Something went wrong.");
-    } finally {
-      setSavingPwd(false);
-    }
+    changePasswordMutation.mutate(
+      { currentPassword, newPassword },
+      {
+        onSuccess: () => {
+          setPwdMsg("Password updated.");
+          setCurrentPassword("");
+          setNewPassword("");
+          setConfirmPassword("");
+        },
+        onError: (err) =>
+          setPwdErr(
+            err instanceof Error ? err.message : "Something went wrong.",
+          ),
+      },
+    );
   };
+
+  const savingProfile = saveProfileMutation.isPending;
+  const savingPwd = changePasswordMutation.isPending;
 
   if (loading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center text-muted-foreground">
         Loading…
-      </div>
-    );
-  }
-
-  if (loadError) {
-    return (
-      <div className="min-h-screen px-4 py-16 max-w-lg mx-auto">
-        <p className="text-destructive mb-4">{loadError}</p>
-        <Link
-          className="text-primary font-medium hover:underline"
-          href="/dashboard"
-        >
-          Back to dashboard
-        </Link>
       </div>
     );
   }
@@ -278,18 +247,18 @@ export default function ProfilePage() {
               <div className="flex justify-between gap-4 border-b border-border pb-3">
                 <dt className="text-muted-foreground">Email</dt>
                 <dd className="text-foreground text-right break-all">
-                  {profile?.email}
+                  {user?.email}
                 </dd>
               </div>
               <div className="flex justify-between gap-4 border-b border-border pb-3">
                 <dt className="text-muted-foreground">Role</dt>
-                <dd className="text-foreground capitalize">{profile?.role}</dd>
+                <dd className="text-foreground capitalize">{user?.role}</dd>
               </div>
-              {profile?.createdAt && (
+              {user?.createdAt && (
                 <div className="flex justify-between gap-4">
                   <dt className="text-muted-foreground">Member since</dt>
                   <dd className="text-foreground">
-                    {new Date(profile.createdAt).toLocaleDateString(undefined, {
+                    {new Date(user.createdAt).toLocaleDateString(undefined, {
                       year: "numeric",
                       month: "long",
                       day: "numeric",
@@ -378,7 +347,7 @@ export default function ProfilePage() {
                     <SelectItem value={NONE}>— Not linked —</SelectItem>
                     {personOptions.map((p) => (
                       <SelectItem key={p.id} value={String(p.id)}>
-                        {formatPerson(p)}
+                        {formatPersonDisplayName(p)}
                       </SelectItem>
                     ))}
                   </SelectContent>

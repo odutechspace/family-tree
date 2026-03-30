@@ -1,9 +1,12 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
 import { Card, CardContent } from "@/src/components/ui/card";
+import { apiGetData } from "@/src/lib/api-fetch";
+import { queryKeys } from "@/src/lib/query-keys";
 
 interface FamilyTree {
   id: number;
@@ -15,23 +18,18 @@ interface FamilyTree {
 }
 
 export default function TreesPage() {
-  const [trees, setTrees] = useState<FamilyTree[]>([]);
-  const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<"mine" | "public">("mine");
 
-  const fetchTrees = async (which: "mine" | "public") => {
-    setLoading(true);
-    const url = which === "mine" ? "/api/trees?mine=1" : "/api/trees";
-    const res = await fetch(url);
-    const data = await res.json();
+  const { data, isPending } = useQuery({
+    queryKey: queryKeys.trees.list({ mine: tab === "mine" }),
+    queryFn: () =>
+      apiGetData<{ trees: FamilyTree[] }>(
+        tab === "mine" ? "/api/trees?mine=1" : "/api/trees",
+      ),
+  });
 
-    setTrees(data.data?.trees || []);
-    setLoading(false);
-  };
-
-  useEffect(() => {
-    fetchTrees(tab);
-  }, [tab]);
+  const trees = data?.trees ?? [];
+  const loading = isPending;
 
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">

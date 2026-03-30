@@ -1,10 +1,13 @@
 import { NextRequest } from "next/server";
+import { In } from "typeorm";
 
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { User, UserRole } from "@/src/api/entities/User";
+import { Person } from "@/src/api/entities/Person";
 import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
 import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
 
 // Admin only — list all users
 export async function GET(req: NextRequest) {
@@ -16,11 +19,50 @@ export async function GET(req: NextRequest) {
 
   const repo = AppDataSource.getRepository(User);
   const users = await repo.find({
-    select: ["id", "name", "email", "role", "profilePhotoUrl", "createdAt"],
+    select: [
+      "id",
+      "name",
+      "email",
+      "role",
+      "profilePhotoUrl",
+      "linkedPersonId",
+      "createdAt",
+    ],
     order: { createdAt: "DESC" },
   });
 
-  return apiSuccess({ users }, "Users retrieved");
+  const linkedIds = [
+    ...new Set(
+      users
+        .map((u) => u.linkedPersonId)
+        .filter((id): id is number => id != null && id > 0),
+    ),
+  ];
+  let personById = new Map<number, Person>();
+
+  if (linkedIds.length > 0) {
+    const persons = await AppDataSource.getRepository(Person).find({
+      where: { id: In(linkedIds) },
+    });
+
+    personById = new Map(persons.map((p) => [p.id, p]));
+  }
+
+  const payload = users.map((u) => ({
+    id: u.id,
+    name: u.name,
+    email: u.email,
+    role: u.role,
+    profilePhotoUrl: u.profilePhotoUrl,
+    linkedPersonId: u.linkedPersonId,
+    createdAt: u.createdAt,
+    displayName:
+      u.linkedPersonId && personById.get(u.linkedPersonId)
+        ? formatPersonDisplayName(personById.get(u.linkedPersonId)!)
+        : u.name,
+  }));
+
+  return apiSuccess({ users: payload }, "Users retrieved");
 }
 
 // Admin only — update user role
