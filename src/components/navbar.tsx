@@ -6,6 +6,7 @@ import { useTheme } from "next-themes";
 
 import { Logo } from "@/src/components/icons";
 import { ThemeSwitch } from "@/src/components/theme-switch";
+import { UserAvatar } from "@/src/components/UserAvatar";
 import { Button } from "@/src/components/ui/button";
 import XPBar from "@/src/components/gamification/XPBar";
 import { useAuth } from "@/src/hooks/useAuth";
@@ -16,6 +17,8 @@ const NAV_LINKS = [
   { href: "/persons", label: "People" },
   { href: "/trees", label: "Trees" },
   { href: "/clans", label: "Clans" },
+  { href: "/connections", label: "Connect" },
+  { href: "/proposals", label: "Proposals" },
   { href: "/merge-requests", label: "Merges" },
   { href: "/profile", label: "Profile" },
 ];
@@ -98,9 +101,12 @@ export function Navbar() {
               >
                 <Link href="/profile" title={user.displayName || user.name}>
                   <span className="flex items-center gap-2">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-accent text-accent-foreground text-xs font-bold">
-                      {(user.initials || user.name.slice(0, 2)).slice(0, 2)}
-                    </span>
+                    <UserAvatar
+                      initials={user.initials}
+                      name={user.displayName || user.name}
+                      size="sm"
+                      src={user.profilePhotoUrl}
+                    />
                     <span className="max-w-[140px] truncate">
                       {user.displayName || user.name}
                     </span>
@@ -182,13 +188,14 @@ export function Navbar() {
           >
             Dashboard
           </Link>
-          <button
-            className="block w-full text-left px-3 py-2 rounded-lg text-sm text-destructive hover:text-destructive/90"
+          <Button
+            className="h-auto w-full justify-start rounded-lg px-3 py-2 text-sm text-destructive hover:text-destructive/90"
             type="button"
+            variant="ghost"
             onClick={logout}
           >
             Sign Out
-          </button>
+          </Button>
         </div>
       )}
     </nav>

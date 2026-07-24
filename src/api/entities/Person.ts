@@ -19,6 +19,12 @@ export enum AliveStatus {
   UNKNOWN = "unknown",
 }
 
+export enum PersonVisibility {
+  PUBLIC = "public",
+  CONNECTIONS = "connections",
+  STEWARDS = "stewards",
+}
+
 @Entity()
 export class Person {
   @PrimaryGeneratedColumn()
@@ -111,6 +117,13 @@ export class Person {
 
   @Column({ default: false })
   isPrivate: boolean;
+
+  @Column({
+    type: "enum",
+    enum: PersonVisibility,
+    default: PersonVisibility.CONNECTIONS,
+  })
+  visibility: PersonVisibility;
 
   @CreateDateColumn()
   createdAt: Date;

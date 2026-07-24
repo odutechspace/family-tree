@@ -13,6 +13,7 @@ import {
   CardTitle,
 } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
+import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
 
 function LoginForm() {
@@ -89,12 +90,11 @@ function LoginForm() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
-                <Input
+                <PasswordInput
                   required
                   autoComplete="current-password"
                   id="password"
                   placeholder="••••••••"
-                  type="password"
                   value={form.password}
                   onChange={(e) =>
                     setForm({ ...form, password: e.target.value })

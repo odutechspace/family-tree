@@ -33,3 +33,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# user-uploaded profile photos
+/public/uploads/profiles/*
+!/public/uploads/profiles/.gitkeep

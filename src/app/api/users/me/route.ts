@@ -12,6 +12,7 @@ import {
   getInitialsFromDisplayName,
   getPersonInitials,
 } from "@/src/lib/personDisplayName";
+import { isAllowedProfilePhotoUrl } from "@/src/lib/dicebear";
 
 export async function GET(_req: NextRequest) {
   await initializeDataSource();
@@ -36,8 +37,28 @@ export async function GET(_req: NextRequest) {
 
   if (!user) return apiError(ApiError.notFound("User not found."));
 
+  // Heal asymmetric links: Person.linkedUserId set but User.linkedPersonId missing
+  if (!user.linkedPersonId) {
+    const linkedAsPerson = await AppDataSource.getRepository(Person).findOne({
+      where: { linkedUserId: auth.id },
+      select: ["id"],
+    });
+    if (linkedAsPerson) {
+      user.linkedPersonId = linkedAsPerson.id;
+      await repo.update(user.id, { linkedPersonId: linkedAsPerson.id });
+    }
+  }
+
   let displayName = user.name;
   let initials = getInitialsFromDisplayName(user.name);
+  let linkedPerson: {
+    id: number;
+    firstName: string;
+    middleName?: string | null;
+    lastName: string;
+    maidenName?: string | null;
+    nickname?: string | null;
+  } | null = null;
 
   if (user.linkedPersonId) {
     const person = await AppDataSource.getRepository(Person).findOne({
@@ -47,11 +68,19 @@ export async function GET(_req: NextRequest) {
     if (person) {
       displayName = formatPersonDisplayName(person);
       initials = getPersonInitials(person);
+      linkedPerson = {
+        id: person.id,
+        firstName: person.firstName,
+        middleName: person.middleName,
+        lastName: person.lastName,
+        maidenName: person.maidenName,
+        nickname: person.nickname,
+      };
     }
   }
 
   return apiSuccess(
-    { user: { ...user, displayName, initials } },
+    { user: { ...user, displayName, initials, linkedPerson } },
     "Profile retrieved",
   );
 }
@@ -88,7 +117,14 @@ export async function PATCH(req: NextRequest) {
     } else if (typeof profilePhotoUrl === "string") {
       const u = profilePhotoUrl.trim();
 
-      user.profilePhotoUrl = u || null;
+      if (!isAllowedProfilePhotoUrl(u)) {
+        return apiError(
+          ApiError.badRequest(
+            "Profile photo must be an http(s) URL or an uploaded image path.",
+          ),
+        );
+      }
+      user.profilePhotoUrl = u;
     }
   }
 
@@ -108,6 +144,12 @@ export async function PATCH(req: NextRequest) {
       if (!person)
         return apiError(ApiError.badRequest("That person does not exist."));
       user.linkedPersonId = pid;
+      // Keep Person.linkedUserId in sync when claiming via profile
+      if (!person.linkedUserId) {
+        await AppDataSource.getRepository(Person).update(pid, {
+          linkedUserId: auth.id,
+        });
+      }
     }
   }
 

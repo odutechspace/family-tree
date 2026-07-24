@@ -10,7 +10,7 @@ import {
   formatPersonDisplayName,
   getPersonInitials,
 } from "@/src/lib/personDisplayName";
-import { apiGetData } from "@/src/lib/api-fetch";
+import { apiGetPersonList } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
 
 interface Person {
@@ -53,12 +53,12 @@ export default function PersonsPage() {
       limit: 40,
     }),
     queryFn: () =>
-      apiGetData<{ persons: Person[]; total: number }>(
+      apiGetPersonList<Person>(
         `/api/persons?search=${encodeURIComponent(debouncedSearch)}&limit=40`,
       ),
   });
 
-  const persons = data?.persons ?? [];
+  const persons = data?.items ?? [];
   const total = data?.total ?? 0;
   const loading = isPending;
 
@@ -71,7 +71,7 @@ export default function PersonsPage() {
               People Directory
             </h1>
             <p className="mt-1 text-muted-foreground">
-              {total} people in the database
+              {total} {total === 1 ? "person" : "people"} you can view
             </p>
           </div>
           <Button asChild size="lg">

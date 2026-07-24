@@ -11,7 +11,9 @@ import ReactFlow, {
   useEdgesState,
   MarkerType,
   BackgroundVariant,
+  DefaultEdgeOptions,
 } from "reactflow";
+import dagre from "dagre";
 
 import "reactflow/dist/style.css";
 import PersonNode, { PersonNodeData } from "./PersonNode";
@@ -19,19 +21,28 @@ import CoupleNode from "./CoupleNode";
 
 const nodeTypes = { person: PersonNode, couple: CoupleNode };
 
+const PERSON_NODE_WIDTH = 160;
+const PERSON_NODE_HEIGHT = 170;
+const COUPLE_NODE_WIDTH = 40;
+const COUPLE_NODE_HEIGHT = 40;
+
+const defaultEdgeOptions: DefaultEdgeOptions = {
+  type: "smoothstep",
+};
+
 interface Person {
   id: number;
   firstName: string;
   middleName?: string | null;
   lastName: string;
   maidenName?: string | null;
-  nickname?: string;
+  nickname?: string | null;
   gender: string;
-  birthDate?: string;
-  deathDate?: string;
+  birthDate?: string | null;
+  deathDate?: string | null;
   aliveStatus: string;
-  photoUrl?: string;
-  tribeEthnicity?: string;
+  photoUrl?: string | null;
+  tribeEthnicity?: string | null;
 }
 
 interface Relationship {
@@ -52,6 +63,35 @@ interface Props {
   onAddRelative?: (person: Person, role: "parent" | "child" | "spouse") => void;
 }
 
+/** Parents of a person via parent_child / adopted / step_parent (personA = parent). */
+function parentsOf(
+  personId: number,
+  parentChildRels: Relationship[],
+): Set<number> {
+  const parents = new Set<number>();
+
+  for (const r of parentChildRels) {
+    if (r.personBId === personId) parents.add(r.personAId);
+  }
+
+  return parents;
+}
+
+function shareParent(
+  aId: number,
+  bId: number,
+  parentChildRels: Relationship[],
+): boolean {
+  const aParents = parentsOf(aId, parentChildRels);
+  const bParents = parentsOf(bId, parentChildRels);
+
+  for (const p of aParents) {
+    if (bParents.has(p)) return true;
+  }
+
+  return false;
+}
+
 export default function FamilyTreeViewer({
   persons,
   relationships,
@@ -64,11 +104,9 @@ export default function FamilyTreeViewer({
   const isDark = resolvedTheme !== "light";
 
   const buildGraph = useCallback(() => {
-    const personMap = new Map(persons.map((p) => [p.id, p]));
     const newNodes: Node[] = [];
     const newEdges: Edge[] = [];
 
-    // Separate spouse/partner pairs from parent-child
     const spouseRels = relationships.filter((r) =>
       ["spouse", "partner", "co_wife", "levirate"].includes(r.type),
     );
@@ -101,78 +139,64 @@ export default function FamilyTreeViewer({
       }
     });
 
-    // Layout: compute positions using simple level-based layout
-    const positioned = new Map<number, { x: number; y: number }>();
-    const levelMap = new Map<number, number>();
+    const g = new dagre.graphlib.Graph();
 
-    // BFS from root to assign generations
-    const rootId = rootPersonId || persons[0]?.id;
-
-    if (rootId) {
-      const queue = [{ id: rootId, level: 0 }];
-      const visited = new Set<number>();
-
-      while (queue.length) {
-        const { id, level } = queue.shift()!;
-
-        if (visited.has(id)) continue;
-        visited.add(id);
-        levelMap.set(id, level);
-
-        // Parents go up (level - 1)
-        parentChildRels
-          .filter((r) => r.personBId === id && !visited.has(r.personAId))
-          .forEach((r) => queue.push({ id: r.personAId, level: level - 1 }));
-        // Children go down (level + 1)
-        parentChildRels
-          .filter((r) => r.personAId === id && !visited.has(r.personBId))
-          .forEach((r) => queue.push({ id: r.personBId, level: level + 1 }));
-        // Spouses same level
-        spouseRels
-          .filter((r) => r.personAId === id || r.personBId === id)
-          .forEach((r) => {
-            const otherId = r.personAId === id ? r.personBId : r.personAId;
-
-            if (!visited.has(otherId)) queue.push({ id: otherId, level });
-          });
-      }
-    }
-
-    // Assign levels to unvisited
-    persons.forEach((p) => {
-      if (!levelMap.has(p.id)) levelMap.set(p.id, 0);
+    g.setDefaultEdgeLabel(() => ({}));
+    g.setGraph({
+      rankdir: "TB",
+      ranksep: 80,
+      nodesep: 60,
+      edgesep: 20,
+      marginx: 40,
+      marginy: 40,
     });
 
-    // Group by level
-    const byLevel = new Map<number, number[]>();
-
     persons.forEach((p) => {
-      const lvl = levelMap.get(p.id) ?? 0;
-
-      if (!byLevel.has(lvl)) byLevel.set(lvl, []);
-      byLevel.get(lvl)!.push(p.id);
-    });
-
-    const VERT_GAP = 200;
-    const HORIZ_GAP = 180;
-
-    byLevel.forEach((ids, level) => {
-      ids.forEach((pid, idx) => {
-        const x = (idx - (ids.length - 1) / 2) * HORIZ_GAP;
-        const y = level * VERT_GAP;
-
-        positioned.set(pid, { x, y });
+      g.setNode(`person-${p.id}`, {
+        width: PERSON_NODE_WIDTH,
+        height: PERSON_NODE_HEIGHT,
       });
     });
 
-    // Add person nodes
+    coupleNodes.forEach(({ id: coupleId }) => {
+      g.setNode(coupleId, {
+        width: COUPLE_NODE_WIDTH,
+        height: COUPLE_NODE_HEIGHT,
+      });
+    });
+
+    // Ranking edges: parents → couple junction
+    coupleNodes.forEach(({ id: coupleId, aId, bId }) => {
+      g.setEdge(`person-${aId}`, coupleId);
+      g.setEdge(`person-${bId}`, coupleId);
+    });
+
+    // Ranking edges: couple (or solo parent) → child
+    parentChildRels.forEach((r) => {
+      const parentId = r.personAId;
+      const childId = r.personBId;
+      const coupleKey = [...coupleNodes.values()].find(
+        (c) => c.aId === parentId || c.bId === parentId,
+      );
+      const sourceId = coupleKey ? coupleKey.id : `person-${parentId}`;
+
+      g.setEdge(sourceId, `person-${childId}`);
+    });
+
+    dagre.layout(g);
+
+    // Person nodes from dagre positions (center → top-left)
     persons.forEach((p) => {
-      const pos = positioned.get(p.id) || { x: 0, y: 0 };
+      const nodeId = `person-${p.id}`;
+      const layout = g.node(nodeId);
 
       newNodes.push({
-        id: `person-${p.id}`,
+        id: nodeId,
         type: "person",
-        position: pos,
+        position: {
+          x: layout.x - PERSON_NODE_WIDTH / 2,
+          y: layout.y - PERSON_NODE_HEIGHT / 2,
+        },
         data: {
           ...p,
           isRoot: p.id === rootPersonId,
@@ -181,25 +205,25 @@ export default function FamilyTreeViewer({
       });
     });
 
-    // Add couple nodes and edges
+    const unionStroke = "#49838F";
+
+    // Couple nodes + union edges (parent → couple)
     coupleNodes.forEach(({ id: coupleId, aId, bId, rel }) => {
-      const posA = positioned.get(aId) || { x: 0, y: 0 };
-      const posB = positioned.get(bId) || { x: 0, y: 0 };
-      const cx = (posA.x + posB.x) / 2;
-      const cy = (posA.y + posB.y) / 2;
+      const layout = g.node(coupleId);
 
       newNodes.push({
         id: coupleId,
         type: "couple",
-        position: { x: cx, y: cy },
+        position: {
+          x: layout.x - COUPLE_NODE_WIDTH / 2,
+          y: layout.y - COUPLE_NODE_HEIGHT / 2,
+        },
         data: {
           ceremonyType: rel.ceremonyType,
           startDate: rel.startDate,
           unionOrder: rel.unionOrder,
         },
       });
-
-      const unionStroke = "#49838F";
 
       newEdges.push(
         {
@@ -208,7 +232,6 @@ export default function FamilyTreeViewer({
           target: coupleId,
           type: "smoothstep",
           style: { stroke: unionStroke, strokeWidth: 2 },
-          markerEnd: { type: MarkerType.Arrow, color: unionStroke },
         },
         {
           id: `${coupleId}-b`,
@@ -216,17 +239,16 @@ export default function FamilyTreeViewer({
           target: coupleId,
           type: "smoothstep",
           style: { stroke: unionStroke, strokeWidth: 2 },
-          markerEnd: { type: MarkerType.Arrow, color: unionStroke },
         },
       );
     });
+
+    const parentStroke = isDark ? "#a8a29e" : "#78716c";
 
     // Parent-child edges (from couple node → child, or direct person → child)
     parentChildRels.forEach((r) => {
       const parentId = r.personAId;
       const childId = r.personBId;
-
-      // Find if parent is in a couple
       const coupleKey = [...coupleNodes.values()].find(
         (c) => c.aId === parentId || c.bId === parentId,
       );
@@ -238,8 +260,8 @@ export default function FamilyTreeViewer({
         target: `person-${childId}`,
         type: "smoothstep",
         style: {
-          stroke: isDark ? "#78716c" : "#a8a29e",
-          strokeWidth: 1.5,
+          stroke: parentStroke,
+          strokeWidth: 2,
           strokeDasharray: r.type !== "parent_child" ? "5,5" : undefined,
         },
         label:
@@ -248,27 +270,31 @@ export default function FamilyTreeViewer({
               ? "adopted"
               : "step"
             : undefined,
-        labelStyle: { fontSize: 10, fill: isDark ? "#a8a29e" : "#78716c" },
+        labelStyle: { fontSize: 10, fill: parentStroke },
         markerEnd: {
           type: MarkerType.ArrowClosed,
-          color: isDark ? "#78716c" : "#a8a29e",
+          color: parentStroke,
         },
       });
     });
 
-    // Sibling edges (dashed horizontal)
+    // Sibling edges only when not already implied by a shared parent
+    const siblingStroke = isDark ? "#a16207" : "#b45309";
+
     siblingRels.forEach((r) => {
+      if (shareParent(r.personAId, r.personBId, parentChildRels)) return;
+
       newEdges.push({
         id: `sib-${r.id}`,
         source: `person-${r.personAId}`,
         target: `person-${r.personBId}`,
-        type: "straight",
+        type: "smoothstep",
         style: {
-          stroke: isDark ? "#a16207" : "#b45309",
+          stroke: siblingStroke,
           strokeWidth: 1,
           strokeDasharray: "4,4",
         },
-        label: r.type === "half_sibling" ? "half" : undefined,
+        label: r.type === "half_sibling" ? "half" : "sibling",
         labelStyle: { fontSize: 9, fill: isDark ? "#fbbf24" : "#92400e" },
       });
     });
@@ -289,6 +315,7 @@ export default function FamilyTreeViewer({
       <ReactFlow
         fitView
         attributionPosition="bottom-right"
+        defaultEdgeOptions={defaultEdgeOptions}
         edges={edges}
         fitViewOptions={{ padding: 0.3 }}
         maxZoom={2}

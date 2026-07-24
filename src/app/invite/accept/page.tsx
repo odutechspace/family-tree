@@ -11,7 +11,10 @@ import {
   CardTitle,
 } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
+import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
+import { UserAvatar } from "@/src/components/UserAvatar";
+import { MergeReviewDialog } from "@/src/components/merge/MergeReviewDialog";
 import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
 
 interface InviteDetails {
@@ -50,6 +53,26 @@ function AcceptInvitePage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+  const [acceptResult, setAcceptResult] = useState<{
+    treeId: number;
+    relatives?: {
+      count: number;
+      sample: Array<{
+        id: number;
+        label: string;
+        photoUrl?: string | null;
+      }>;
+    };
+    pendingMerges?: Array<{
+      sourceId: number;
+      targetId: number;
+      score: number;
+      reasons: string[];
+      source: { id: number; label: string };
+      target: { id: number; label: string };
+    }>;
+  } | null>(null);
+  const [mergeOpen, setMergeOpen] = useState(false);
 
   useEffect(() => {
     if (!token) {
@@ -115,7 +138,12 @@ function AcceptInvitePage() {
     }
 
     setSuccess(true);
-    setTimeout(() => router.push(`/trees/${data.data.treeId}`), 1500);
+    setAcceptResult(data.data);
+    if (data.data?.pendingMerges?.length) {
+      setMergeOpen(true);
+    } else {
+      setTimeout(() => router.push(`/trees/${data.data.treeId}`), 2500);
+    }
   };
 
   if (loading) {
@@ -139,13 +167,46 @@ function AcceptInvitePage() {
   }
 
   if (success) {
+    const sample = acceptResult?.relatives?.sample ?? [];
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background text-center">
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-4 text-center">
         <p className="text-5xl">🌳</p>
         <h2 className="text-xl font-bold text-primary">
           Welcome to the family tree!
         </h2>
-        <p className="text-muted-foreground">Redirecting you now...</p>
+        {acceptResult?.relatives && acceptResult.relatives.count > 0 ? (
+          <div className="w-full max-w-md space-y-3">
+            <p className="text-muted-foreground text-sm">
+              Your people ({acceptResult.relatives.count} connected)
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              {sample.map((p) => (
+                <div key={p.id} className="flex flex-col items-center gap-1">
+                  <UserAvatar name={p.label} size="lg" src={p.photoUrl} />
+                  <span className="max-w-[72px] truncate text-xs text-foreground">
+                    {p.label}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="text-muted-foreground">Redirecting you now...</p>
+        )}
+        <Button asChild>
+          <Link href={`/trees/${acceptResult?.treeId}`}>Open tree →</Link>
+        </Button>
+        {acceptResult?.pendingMerges &&
+        acceptResult.pendingMerges.length > 0 ? (
+          <MergeReviewDialog
+            open={mergeOpen}
+            pendingMerges={acceptResult.pendingMerges}
+            onOpenChange={setMergeOpen}
+            onDone={() =>
+              router.push(`/trees/${acceptResult.treeId}`)
+            }
+          />
+        ) : null}
       </div>
     );
   }
@@ -247,20 +308,18 @@ function AcceptInvitePage() {
                 </div>
                 <div className="space-y-1">
                   <Label>Password *</Label>
-                  <Input
+                  <PasswordInput
                     required
                     placeholder="At least 6 characters"
-                    type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label>Confirm Password *</Label>
-                  <Input
+                  <PasswordInput
                     required
                     placeholder="Repeat your password"
-                    type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                   />

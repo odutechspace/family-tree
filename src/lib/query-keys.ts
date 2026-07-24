@@ -2,6 +2,11 @@ export const queryKeys = {
   auth: {
     me: ["auth", "me"] as const,
   },
+  me: {
+    relatives: ["me", "relatives"] as const,
+    suggestions: ["me", "suggestions"] as const,
+    proposedEditsIncoming: ["me", "proposedEdits", "incoming"] as const,
+  },
   trees: {
     list: (params: { mine?: boolean } = {}) =>
       ["trees", "list", params] as const,
@@ -16,6 +21,12 @@ export const queryKeys = {
     detail: (id: string | number) => ["persons", "detail", String(id)] as const,
     suggestions: (personId: string | number) =>
       ["persons", "suggestions", String(personId)] as const,
+    proposedEdits: (id: string | number) =>
+      ["persons", "proposedEdits", String(id)] as const,
+  },
+  connectionRequests: {
+    list: (box: "incoming" | "outgoing") =>
+      ["connectionRequests", box] as const,
   },
   clans: {
     list: (params: { search: string } = { search: "" }) =>
@@ -25,6 +36,9 @@ export const queryKeys = {
   mergeRequests: {
     list: (params: { all?: boolean; status?: string } = {}) =>
       ["mergeRequests", "list", params] as const,
+  },
+  mergeAudits: {
+    list: ["mergeAudits", "list"] as const,
   },
   gamification: {
     quests: ["gamification", "quests"] as const,

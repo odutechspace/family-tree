@@ -56,7 +56,7 @@ export const baseTemplate = (body: string, email: string): string => {
                 </tr>
 
                 <tr>
-                    <td class="body element-padding-x" style="padding: 0 40px; text-align: left; font-size: 16px; line-height: 1.6;">
+                    <td class="body element-padding-x" style="padding: 8px 40px 32px; text-align: left; font-size: 16px; line-height: 1.6;">
                         ${body}
                     </td>
                 </tr>

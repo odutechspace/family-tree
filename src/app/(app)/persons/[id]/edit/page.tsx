@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import { DatePicker } from "@/src/components/ui/date-picker";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import {
@@ -21,11 +22,12 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { Textarea } from "@/src/components/ui/textarea";
+import { Switch } from "@/src/components/ui/switch";
 import { apiGetData } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
 
-const GENDER_OPTIONS = ["male", "female", "other", "unknown"];
-const ALIVE_OPTIONS = ["alive", "deceased", "unknown"];
+const GENDER_OPTIONS = ["male", "female", "other", "unknown"] as const;
+const ALIVE_OPTIONS = ["alive", "deceased", "unknown"] as const;
 
 interface Clan {
   id: number;
@@ -33,19 +35,75 @@ interface Clan {
   totem?: string;
 }
 
+function asString(value: unknown): string {
+  if (value == null) return "";
+  return String(value);
+}
+
+function toDateInput(value: unknown): string {
+  if (!value) return "";
+  const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+  return match?.[1] ?? "";
+}
+
+function normalizeOption(
+  value: unknown,
+  allowed: readonly string[],
+  fallback: string,
+): string {
+  const normalized = asString(value).trim().toLowerCase();
+  return allowed.includes(normalized) ? normalized : fallback;
+}
+
+function personToForm(p: Record<string, unknown>): Record<string, string> {
+  return {
+    firstName: asString(p.firstName),
+    middleName: asString(p.middleName),
+    lastName: asString(p.lastName),
+    maidenName: asString(p.maidenName),
+    nickname: asString(p.nickname),
+    gender: normalizeOption(p.gender, GENDER_OPTIONS, "unknown"),
+    birthDate: toDateInput(p.birthDate),
+    birthPlace: asString(p.birthPlace),
+    aliveStatus: normalizeOption(p.aliveStatus, ALIVE_OPTIONS, "unknown"),
+    deathDate: toDateInput(p.deathDate),
+    deathPlace: asString(p.deathPlace),
+    photoUrl: asString(p.photoUrl),
+    biography: asString(p.biography),
+    oralHistory: asString(p.oralHistory),
+    clanId: p.clanId != null && p.clanId !== "" ? String(p.clanId) : "",
+    tribeEthnicity: asString(p.tribeEthnicity),
+    totem: asString(p.totem),
+    originVillage: asString(p.originVillage),
+    originCountry: asString(p.originCountry),
+    visibility: normalizeOption(
+      p.visibility,
+      ["public", "connections", "stewards"],
+      "connections",
+    ),
+    isPrivate: p.isPrivate === true || p.isPrivate === "true" ? "true" : "false",
+  };
+}
+
 export default function EditPersonPage() {
   const router = useRouter();
   const { id } = useParams<{ id: string }>();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
-  const [form, setForm] = useState<Record<string, string>>({});
+  // null until person data is mapped — avoids Radix Select mounting on fallbacks
+  const [form, setForm] = useState<Record<string, string> | null>(null);
+  const [canEdit, setCanEdit] = useState(true);
+  const [proposeMsg, setProposeMsg] = useState("");
 
   const [personQ, clansQ] = useQueries({
     queries: [
       {
         queryKey: queryKeys.persons.detail(id ?? ""),
         queryFn: () =>
-          apiGetData<{ person: Record<string, unknown> }>(`/api/persons/${id}`),
+          apiGetData<{
+            person: Record<string, unknown>;
+            canEdit?: boolean;
+          }>(`/api/persons/${id}`),
         enabled: !!id,
       },
       {
@@ -59,39 +117,22 @@ export default function EditPersonPage() {
   const loading = personQ.isPending || clansQ.isPending;
 
   useEffect(() => {
+    setForm(null);
+  }, [id]);
+
+  useEffect(() => {
     const p = personQ.data?.person;
     if (!p) return;
-    setForm({
-      firstName: (p.firstName as string) || "",
-      middleName: (p.middleName as string) || "",
-      lastName: (p.lastName as string) || "",
-      maidenName: (p.maidenName as string) || "",
-      nickname: (p.nickname as string) || "",
-      gender: (p.gender as string) || "unknown",
-      birthDate: p.birthDate
-        ? String(p.birthDate).split("T")[0]
-        : "",
-      birthPlace: (p.birthPlace as string) || "",
-      aliveStatus: (p.aliveStatus as string) || "unknown",
-      deathDate: p.deathDate
-        ? String(p.deathDate).split("T")[0]
-        : "",
-      deathPlace: (p.deathPlace as string) || "",
-      photoUrl: (p.photoUrl as string) || "",
-      biography: (p.biography as string) || "",
-      oralHistory: (p.oralHistory as string) || "",
-      clanId: p.clanId ? String(p.clanId) : "",
-      tribeEthnicity: (p.tribeEthnicity as string) || "",
-      totem: (p.totem as string) || "",
-      originVillage: (p.originVillage as string) || "",
-      originCountry: (p.originCountry as string) || "",
-    });
-  }, [personQ.data]);
+    setForm(personToForm(p));
+    setCanEdit(personQ.data?.canEdit !== false);
+  }, [personQ.data, id]);
 
-  const set = (k: string, v: string) => setForm((f) => ({ ...f, [k]: v }));
+  const set = (k: string, v: string) =>
+    setForm((f) => (f ? { ...f, [k]: v } : f));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!form) return;
     setSaving(true);
     setError("");
     try {
@@ -100,6 +141,7 @@ export default function EditPersonPage() {
       if (!body.clanId) delete body.clanId;
       if (!body.birthDate) delete body.birthDate;
       if (!body.deathDate) delete body.deathDate;
+      body.isPrivate = form.isPrivate === "true";
 
       const res = await fetch(`/api/persons/${id}`, {
         method: "PATCH",
@@ -113,6 +155,12 @@ export default function EditPersonPage() {
 
         return;
       }
+      if (data.data?.proposed) {
+        setProposeMsg(
+          "Your changes were submitted as a proposal for a steward to review.",
+        );
+        return;
+      }
       router.push(`/persons/${id}`);
     } catch {
       setError("Something went wrong.");
@@ -121,7 +169,7 @@ export default function EditPersonPage() {
     }
   };
 
-  if (loading) {
+  if (loading || !form) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         Loading...
@@ -141,6 +189,20 @@ export default function EditPersonPage() {
         {error && (
           <div className="mb-6 rounded-lg border border-destructive/50 bg-destructive/10 px-3 py-2 text-sm text-destructive">
             {error}
+          </div>
+        )}
+        {!canEdit && (
+          <div className="mb-6 rounded-lg border border-primary/40 bg-primary/10 px-3 py-2 text-sm text-primary">
+            You are not a steward of this person. Saving will suggest changes for
+            steward review instead of writing directly.
+          </div>
+        )}
+        {proposeMsg && (
+          <div className="mb-6 rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm">
+            {proposeMsg}{" "}
+            <Link className="underline" href="/proposals">
+              View proposals
+            </Link>
           </div>
         )}
         <form className="space-y-6" onSubmit={handleSubmit}>
@@ -179,11 +241,12 @@ export default function EditPersonPage() {
               <div className="space-y-2">
                 <Label>Gender</Label>
                 <Select
-                  value={form.gender || "unknown"}
+                  key={`gender-${id}`}
+                  value={form.gender}
                   onValueChange={(v) => set("gender", v)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select gender" />
                   </SelectTrigger>
                   <SelectContent>
                     {GENDER_OPTIONS.map((g) => (
@@ -202,12 +265,14 @@ export default function EditPersonPage() {
               <CardTitle className="text-primary">Life Details</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
-              <Field
-                label="Birth Date"
-                type="date"
-                value={form.birthDate || ""}
-                onChange={(v) => set("birthDate", v)}
-              />
+              <div className="space-y-2">
+                <Label>Birth Date</Label>
+                <DatePicker
+                  placeholder="Select birth date"
+                  value={form.birthDate || ""}
+                  onChange={(v) => set("birthDate", v)}
+                />
+              </div>
               <Field
                 label="Birth Place"
                 value={form.birthPlace || ""}
@@ -216,11 +281,12 @@ export default function EditPersonPage() {
               <div className="space-y-2">
                 <Label>Status</Label>
                 <Select
-                  value={form.aliveStatus || "unknown"}
+                  key={`status-${id}`}
+                  value={form.aliveStatus}
                   onValueChange={(v) => set("aliveStatus", v)}
                 >
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Select status" />
                   </SelectTrigger>
                   <SelectContent>
                     {ALIVE_OPTIONS.map((s) => (
@@ -233,12 +299,14 @@ export default function EditPersonPage() {
               </div>
               {form.aliveStatus === "deceased" && (
                 <>
-                  <Field
-                    label="Death Date"
-                    type="date"
-                    value={form.deathDate || ""}
-                    onChange={(v) => set("deathDate", v)}
-                  />
+                  <div className="space-y-2">
+                    <Label>Death Date</Label>
+                    <DatePicker
+                      placeholder="Select death date"
+                      value={form.deathDate || ""}
+                      onChange={(v) => set("deathDate", v)}
+                    />
+                  </div>
                   <Field
                     label="Death Place"
                     value={form.deathPlace || ""}
@@ -257,6 +325,7 @@ export default function EditPersonPage() {
               <div className="space-y-2">
                 <Label>Clan</Label>
                 <Select
+                  key={`clan-${id}`}
                   value={form.clanId || "__none__"}
                   onValueChange={(v) =>
                     set("clanId", v === "__none__" ? "" : v)
@@ -295,6 +364,51 @@ export default function EditPersonPage() {
                 value={form.originCountry || ""}
                 onChange={(v) => set("originCountry", v)}
               />
+              <div className="space-y-2 col-span-2">
+                <Label>Visibility</Label>
+                <Select
+                  key={`visibility-${id}`}
+                  value={form.visibility || "connections"}
+                  onValueChange={(v) => set("visibility", v)}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">
+                      Public — anyone on My Ukoo
+                    </SelectItem>
+                    <SelectItem value="connections">
+                      Family — relatives in the graph
+                    </SelectItem>
+                    <SelectItem value="stewards">
+                      Family — relatives in the graph (not publicly listed)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Relatives within a few degrees of kinship can view this person
+                  unless you hide them below.
+                </p>
+              </div>
+              <div className="col-span-2 flex items-start justify-between gap-4 rounded-lg border border-border p-3">
+                <div className="space-y-1">
+                  <Label htmlFor="isPrivate">
+                    Hide from relatives (only me and stewards can view)
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Overrides the visibility choice above. Use for sensitive
+                    living people who should not appear to other relatives.
+                  </p>
+                </div>
+                <Switch
+                  checked={form.isPrivate === "true"}
+                  id="isPrivate"
+                  onCheckedChange={(checked) =>
+                    set("isPrivate", checked ? "true" : "false")
+                  }
+                />
+              </div>
             </CardContent>
           </Card>
 
@@ -334,7 +448,11 @@ export default function EditPersonPage() {
               size="lg"
               type="submit"
             >
-              {saving ? "Saving..." : "Save Changes"}
+              {saving
+                ? "Saving..."
+                : canEdit
+                  ? "Save Changes"
+                  : "Suggest Changes"}
             </Button>
             <Button asChild size="lg" variant="secondary">
               <Link href={`/persons/${id}`}>Cancel</Link>

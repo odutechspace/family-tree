@@ -5,11 +5,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/src/hooks/useAuth";
-import { apiGetData } from "@/src/lib/api-fetch";
+import { apiGetData, apiGetPersonList } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
 import XPBar from "@/src/components/gamification/XPBar";
 import QuestCard from "@/src/components/gamification/QuestCard";
 import AchievementBadge from "@/src/components/gamification/AchievementBadge";
+import { UserAvatar } from "@/src/components/UserAvatar";
 import { Button } from "@/src/components/ui/button";
 import {
   Card,
@@ -17,6 +18,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
+import { kinshipLabel } from "@/src/lib/kinshipLabel";
 
 interface Quest {
   key: string;
@@ -41,6 +44,23 @@ interface RecentAchievement {
   unlockedAt: string;
 }
 
+const XP_ICONS: Record<string, string> = {
+  add_person: "👤",
+  add_relationship: "🔗",
+  add_life_event: "📅",
+  add_photo: "📷",
+  write_biography: "📖",
+  write_oral_history: "🎙️",
+  create_tree: "🌳",
+  create_clan: "🦁",
+  submit_merge_request: "🔗",
+  merge_approved: "🤝",
+  daily_streak: "🔥",
+  weekly_streak: "⚡",
+  achievement_unlocked: "🏆",
+  quest_completed: "✅",
+};
+
 export default function DashboardPage() {
   const { user, loading, logout } = useAuth();
   const router = useRouter();
@@ -53,6 +73,9 @@ export default function DashboardPage() {
     questsQuery,
     profileQuery,
     activityQuery,
+    relativesQuery,
+    connectionsQuery,
+    proposedEditsQuery,
   ] = useQueries({
     queries: [
       {
@@ -62,7 +85,7 @@ export default function DashboardPage() {
       },
       {
         queryKey: queryKeys.persons.summary({ limit: 1 }),
-        queryFn: () => apiGetData<{ total: number }>("/api/persons?limit=1"),
+        queryFn: () => apiGetPersonList("/api/persons?limit=1"),
         enabled: dashboardEnabled,
       },
       {
@@ -106,6 +129,48 @@ export default function DashboardPage() {
           }>("/api/gamification/activity?limit=8"),
         enabled: dashboardEnabled,
       },
+      {
+        queryKey: queryKeys.me.relatives,
+        queryFn: () =>
+          apiGetData<{
+            linkedPersonId: number | null;
+            nodes: Array<{
+              person: {
+                id: number;
+                firstName: string;
+                lastName: string;
+                middleName?: string;
+                photoUrl?: string;
+                gender?: string | null;
+              };
+              degree: number;
+            }>;
+            edges: Array<{
+              relationship: {
+                personAId: number;
+                personBId: number;
+                type: string;
+              };
+            }>;
+          }>("/api/me/relatives"),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.connectionRequests.list("incoming"),
+        queryFn: () =>
+          apiGetData<{ requests: unknown[] }>(
+            "/api/connection-requests?box=incoming",
+          ),
+        enabled: dashboardEnabled,
+      },
+      {
+        queryKey: queryKeys.me.proposedEditsIncoming,
+        queryFn: () =>
+          apiGetData<{ proposedEdits: unknown[] }>(
+            "/api/me/proposed-edits/incoming",
+          ),
+        enabled: dashboardEnabled,
+      },
     ],
   });
 
@@ -117,6 +182,16 @@ export default function DashboardPage() {
     }),
     [treesQuery.data, personsQuery.data, mergesQuery.data],
   );
+
+  const incomingConnections = connectionsQuery.data?.requests?.length ?? 0;
+  const incomingProposedEdits =
+    proposedEditsQuery.data?.proposedEdits?.length ?? 0;
+  const needsLinkProfile = !user?.linkedPersonId;
+  const showAttention =
+    needsLinkProfile ||
+    incomingConnections > 0 ||
+    incomingProposedEdits > 0 ||
+    stats.pendingMerges > 0;
 
   const todayQuests = useMemo(() => {
     const q = questsQuery.data?.quests;
@@ -140,6 +215,44 @@ export default function DashboardPage() {
     [activityQuery.data],
   );
 
+  const yourPeople = useMemo(() => {
+    const data = relativesQuery.data;
+    if (!data?.nodes?.length) return [];
+
+    const linkedId = data.linkedPersonId;
+    const people = data.nodes.map((n) => ({
+      id: n.person.id,
+      gender: n.person.gender,
+    }));
+    const edges = (data.edges ?? []).map((e) => ({
+      personAId: e.relationship.personAId,
+      personBId: e.relationship.personBId,
+      type: e.relationship.type,
+    }));
+
+    return [...data.nodes]
+      .filter((n) => n.degree > 0)
+      .sort((a, b) => a.degree - b.degree || a.person.id - b.person.id)
+      .slice(0, 12)
+      .map((n) => {
+        const label = formatPersonDisplayName(n.person);
+        const relation =
+          linkedId != null
+            ? kinshipLabel(linkedId, n.person.id, n.degree, people, edges)
+            : n.degree === 1
+              ? "Immediate"
+              : `Related (${n.degree} hops)`;
+        return {
+          id: n.person.id,
+          label,
+          photoUrl: n.person.photoUrl,
+          degree: n.degree,
+          isImmediate: n.degree === 1,
+          relation,
+        };
+      });
+  }, [relativesQuery.data]);
+
   useEffect(() => {
     if (!loading && !user) router.push("/auth/login");
   }, [user, loading, router]);
@@ -152,28 +265,11 @@ export default function DashboardPage() {
     );
   }
 
-  const XP_ICONS: Record<string, string> = {
-    add_person: "👤",
-    add_relationship: "🔗",
-    add_life_event: "📅",
-    add_photo: "📷",
-    write_biography: "📖",
-    write_oral_history: "🎙️",
-    create_tree: "🌳",
-    create_clan: "🦁",
-    submit_merge_request: "🔗",
-    merge_approved: "🤝",
-    daily_streak: "🔥",
-    weekly_streak: "⚡",
-    achievement_unlocked: "🏆",
-    quest_completed: "✅",
-  };
-
   return (
     <div className="min-h-screen bg-background px-4 py-8 text-foreground">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
+        <div className="mb-4 flex items-center justify-between gap-4">
+          <div className="min-w-0">
             <h1 className="text-2xl font-bold text-foreground">
               Welcome back,{" "}
               <span
@@ -188,7 +284,7 @@ export default function DashboardPage() {
             </p>
           </div>
           <Button
-            className="text-muted-foreground hover:text-destructive"
+            className="shrink-0 text-muted-foreground hover:text-destructive"
             size="sm"
             variant="ghost"
             onClick={logout}
@@ -201,6 +297,117 @@ export default function DashboardPage() {
           <XPBar />
         </div>
 
+        {showAttention && (
+          <Card className="mb-6 border-amber-300/70 bg-gradient-to-r from-amber-500/10 to-orange-500/5 dark:border-amber-700/50 dark:from-amber-900/20 dark:to-orange-950/15">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base text-amber-700 dark:text-amber-400">
+                Needs your attention
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2">
+              {needsLinkProfile && (
+                <AttentionRow
+                  cta="Link profile"
+                  description="Connect your account to a person so relatives and suggestions appear here."
+                  href="/profile"
+                  icon="🪪"
+                  title="Link your profile to a family member"
+                  primary
+                />
+              )}
+              {incomingConnections > 0 && (
+                <AttentionRow
+                  cta="Review"
+                  description={`${incomingConnections} pending request${incomingConnections === 1 ? "" : "s"}`}
+                  href="/connections"
+                  icon="🤝"
+                  title={
+                    incomingConnections === 1
+                      ? "1 person wants to connect"
+                      : `${incomingConnections} people want to connect`
+                  }
+                />
+              )}
+              {incomingProposedEdits > 0 && (
+                <AttentionRow
+                  cta="Review"
+                  description={`${incomingProposedEdits} awaiting your decision`}
+                  href="/proposals"
+                  icon="✏️"
+                  title={
+                    incomingProposedEdits === 1
+                      ? "1 proposed edit awaits review"
+                      : `${incomingProposedEdits} proposed edits await review`
+                  }
+                />
+              )}
+              {stats.pendingMerges > 0 && (
+                <AttentionRow
+                  cta="Open"
+                  description={`${stats.pendingMerges} pending merge${stats.pendingMerges === 1 ? "" : "s"}`}
+                  href="/merge-requests"
+                  icon="🔗"
+                  title={
+                    stats.pendingMerges === 1
+                      ? "1 pending merge"
+                      : `${stats.pendingMerges} pending merges`
+                  }
+                />
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {yourPeople.length > 0 && (
+          <Card className="mb-6">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Your people</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-3">
+                {yourPeople.map((p) => (
+                  <Link
+                    key={p.id}
+                    className="flex w-[88px] flex-col items-center gap-1 hover:opacity-90"
+                    href={`/persons/${p.id}`}
+                    title={`${p.label} · ${p.relation}`}
+                  >
+                    <UserAvatar
+                      className={
+                        p.isImmediate
+                          ? "ring-2 ring-primary ring-offset-2 ring-offset-background"
+                          : undefined
+                      }
+                      name={p.label}
+                      size="lg"
+                      src={p.photoUrl}
+                    />
+                    <span className="max-w-full truncate text-xs font-medium">
+                      {p.label}
+                    </span>
+                    <span
+                      className={`max-w-full truncate text-[10px] ${
+                        p.isImmediate
+                          ? "font-medium text-primary"
+                          : "text-muted-foreground"
+                      }`}
+                    >
+                      {p.relation}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                Immediate family first
+                {(relativesQuery.data?.nodes?.filter((n) => n.degree > 0)
+                  .length ?? 0) > yourPeople.length
+                  ? ` · ${relativesQuery.data!.nodes.filter((n) => n.degree > 0).length} connected`
+                  : null}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="mb-6 grid grid-cols-3 gap-3">
           <StatCard
             href="/trees?mine=1"
@@ -212,6 +419,7 @@ export default function DashboardPage() {
             href="/persons"
             icon="👥"
             label="People"
+            title="People you can view in the directory"
             value={stats.persons}
           />
           <StatCard
@@ -225,7 +433,7 @@ export default function DashboardPage() {
 
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="space-y-6 lg:col-span-2">
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <ActionCard
                 color="blue"
                 href="/persons/new"
@@ -239,28 +447,16 @@ export default function DashboardPage() {
                 title="New Tree"
               />
               <ActionCard
-                color="amber"
-                href="/merge-requests/new"
-                icon="🔗"
-                title="Merge History"
-              />
-              <ActionCard
-                color="orange"
-                href="/clans/new"
-                icon="🦁"
-                title="Add Clan"
-              />
-              <ActionCard
                 color="purple"
                 href="/persons"
                 icon="🔍"
                 title="Browse People"
               />
               <ActionCard
-                color="red"
-                href="/quests"
-                icon="🎯"
-                title="View Quests"
+                color="orange"
+                href="/clans/new"
+                icon="🦁"
+                title="Add Clan"
               />
             </div>
 
@@ -334,7 +530,12 @@ export default function DashboardPage() {
             )}
 
             <Card>
-              <CardContent className="space-y-1 p-2">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-base font-semibold text-muted-foreground">
+                  Explore
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-1 p-2 pt-0">
                 <Button
                   asChild
                   className="h-auto w-full justify-between px-3 py-2 font-normal"
@@ -435,18 +636,58 @@ export default function DashboardPage() {
   );
 }
 
+function AttentionRow({
+  href,
+  icon,
+  title,
+  description,
+  cta,
+  primary,
+}: {
+  href: string;
+  icon: string;
+  title: string;
+  description: string;
+  cta: string;
+  primary?: boolean;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-background/70 px-3 py-2.5">
+      <div className="flex min-w-0 items-start gap-2.5">
+        <span className="mt-0.5 text-lg">{icon}</span>
+        <div className="min-w-0">
+          <p className="truncate text-sm font-medium text-foreground">
+            {title}
+          </p>
+          <p className="truncate text-xs text-muted-foreground">{description}</p>
+        </div>
+      </div>
+      <Button
+        asChild
+        className="shrink-0"
+        size="sm"
+        variant={primary ? "default" : "secondary"}
+      >
+        <Link href={href}>{cta}</Link>
+      </Button>
+    </div>
+  );
+}
+
 function StatCard({
   href,
   value,
   label,
   icon,
   highlight,
+  title,
 }: {
   href: string;
   value: number;
   label: string;
   icon: string;
   highlight?: boolean;
+  title?: string;
 }) {
   return (
     <Link
@@ -456,6 +697,7 @@ function StatCard({
           : "border-border hover:border-amber-400/60 dark:hover:border-amber-500/50"
       }`}
       href={href}
+      title={title}
     >
       <p className="mb-1 text-2xl">{icon}</p>
       <p

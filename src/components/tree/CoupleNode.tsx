@@ -13,14 +13,7 @@ function CoupleNode({ data }: NodeProps<CoupleNodeData>) {
     <div className="relative flex items-center justify-center">
       <Handle
         className="!h-2 !w-2 !bg-primary"
-        id="left"
-        position={Position.Left}
-        type="target"
-      />
-      <Handle
-        className="!h-2 !w-2 !bg-primary"
-        id="right"
-        position={Position.Right}
+        position={Position.Top}
         type="target"
       />
 

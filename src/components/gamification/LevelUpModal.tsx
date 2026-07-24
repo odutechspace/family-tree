@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 
+import { Button } from "@/src/components/ui/button";
+
 const LEVEL_NAMES = [
   "Seedling",
   "Root Finder",
@@ -72,12 +74,13 @@ export default function LevelUpModal({
           stories, and preserving your heritage.
         </p>
 
-        <button
-          className="w-full py-3 bg-amber-600 hover:bg-amber-500 text-white font-bold rounded-xl transition text-lg"
+        <Button
+          className="w-full rounded-xl bg-amber-600 py-3 text-lg font-bold text-white hover:bg-amber-500"
+          type="button"
           onClick={onClose}
         >
           Continue Building 🌳
-        </button>
+        </Button>
       </div>
     </div>
   );

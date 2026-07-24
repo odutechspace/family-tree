@@ -108,6 +108,12 @@ export class UserXP {
   @Column({ default: 0 })
   oralHistoriesWritten: number;
 
+  @Column({ default: 0 })
+  claimsMade: number;
+
+  @Column({ default: 0 })
+  connectionsMade: number;
+
   @CreateDateColumn()
   createdAt: Date;
 

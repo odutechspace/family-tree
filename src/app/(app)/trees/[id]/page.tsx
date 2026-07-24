@@ -12,8 +12,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/src/components/ui/dialog";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
+import { Pencil } from "lucide-react";
+import {
+  Popover,
+  PopoverAnchor,
+  PopoverContent,
+} from "@/src/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -26,6 +40,7 @@ import {
   getPersonInitials,
 } from "@/src/lib/personDisplayName";
 import { apiGetData } from "@/src/lib/api-fetch";
+import { NotFoundView } from "@/src/components/NotFoundView";
 import { queryKeys } from "@/src/lib/query-keys";
 
 const FamilyTreeViewer = dynamic(
@@ -48,19 +63,48 @@ interface FamilyTree {
   ownerUserId: number;
   rootPersonId?: number;
 }
+/** Matches GET /api/persons `data[]` (and tree member payloads). */
 interface Person {
   id: number;
   firstName: string;
   middleName?: string | null;
   lastName: string;
   maidenName?: string | null;
-  nickname?: string;
+  nickname?: string | null;
   gender: string;
-  birthDate?: string;
-  deathDate?: string;
+  birthDate?: string | null;
+  birthPlace?: string | null;
   aliveStatus: string;
-  photoUrl?: string;
+  deathDate?: string | null;
+  deathPlace?: string | null;
+  photoUrl?: string | null;
+  biography?: string | null;
+  oralHistory?: string | null;
+  clanId?: number | null;
+  tribeEthnicity?: string | null;
+  totem?: string | null;
+  originVillage?: string | null;
+  originCountry?: string | null;
+  personCode?: string | null;
+  phoneHash?: string | null;
+  linkedUserId?: number | null;
+  createdByUserId?: number;
+  isVerified?: boolean;
+  isPrivate?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+/** GET /api/persons?search=… — envelope: `data` is the person array. */
+interface PersonsApiListResponse {
+  success: boolean;
+  message?: string;
+  data?: Person[];
+  total?: number;
+  page?: number;
+  limit?: number;
+}
+
 interface Relationship {
   id: number;
   personAId: number;
@@ -111,26 +155,26 @@ async function createPersonAndAddToTree(
   form: QuickPersonForm,
   treeId: number,
 ): Promise<{ ok: boolean; person?: Person; message?: string }> {
-  const pRes = await fetch("/api/persons", {
+  const res = await fetch(`/api/trees/${treeId}/members`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(form),
+    body: JSON.stringify({ person: form }),
   });
-  const pData = await pRes.json();
+  const data = await res.json().catch(() => ({}));
 
-  if (!pRes.ok)
-    return { ok: false, message: pData.message || "Failed to create person." };
+  if (!res.ok) {
+    return {
+      ok: false,
+      message:
+        (data as { message?: string }).message ||
+        "Could not create person and add to tree.",
+    };
+  }
 
-  const person: Person = pData.data.person;
-
-  const mRes = await fetch(`/api/trees/${treeId}/members`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ personId: person.id }),
-  });
-
-  if (!mRes.ok)
-    return { ok: false, message: "Created person but could not add to tree." };
+  const person = (data as { data?: { person?: Person } }).data?.person;
+  if (!person) {
+    return { ok: false, message: "Person was created but response was incomplete." };
+  }
 
   return { ok: true, person };
 }
@@ -140,14 +184,22 @@ async function createRelationship(
   personBId: number,
   type: string,
   extra?: { startDate?: string; ceremonyType?: string; unionOrder?: number },
-) {
+): Promise<{ ok: boolean; message?: string }> {
   const res = await fetch("/api/relationships", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ personAId, personBId, type, ...extra }),
   });
+  const payload = (await res.json().catch(() => ({}))) as { message?: string };
 
-  return res.ok;
+  if (!res.ok) {
+    return {
+      ok: false,
+      message: payload.message || "Could not create relationship.",
+    };
+  }
+
+  return { ok: true };
 }
 
 // ─── Small reusable QuickPersonFields component ───────────────────────────────
@@ -188,7 +240,7 @@ function QuickPersonFields({
           onValueChange={(v) => onChange("gender", v)}
         >
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue />
+            <SelectValue placeholder="Gender" />
           </SelectTrigger>
           <SelectContent>
             {GENDER_OPTIONS.map((g) => (
@@ -206,7 +258,7 @@ function QuickPersonFields({
           onValueChange={(v) => onChange("aliveStatus", v)}
         >
           <SelectTrigger className="h-8 text-sm">
-            <SelectValue />
+            <SelectValue placeholder="Status" />
           </SelectTrigger>
           <SelectContent>
             {ALIVE_OPTIONS.map((s) => (
@@ -492,6 +544,9 @@ function AddMemberModal({
 }) {
   const [search, setSearch] = useState("");
   const [results, setResults] = useState<Person[]>([]);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [searchError, setSearchError] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showCreate, setShowCreate] = useState(false);
@@ -505,6 +560,16 @@ function AddMemberModal({
   const setField = (k: keyof QuickPersonForm, v: string) =>
     setQuickForm((f) => ({ ...f, [k]: v }));
 
+  /** When adding a relative, people already in the tree are valid (relationship only). Otherwise hide members. */
+  const anchorPersonId = prefillRelativeOf?.person.id;
+
+  const filterSearchRows = (rows: Person[]) => {
+    // Always exclude only the anchor person (when adding a relative).
+    // In add-to-tree mode anchorPersonId is undefined so nothing extra is excluded;
+    // existing members are shown with an "In tree" badge in the result list.
+    return rows.filter((p) => p.id !== anchorPersonId);
+  };
+
   const lookupByCode = async () => {
     const code = codeSearch.trim().toUpperCase();
 
@@ -512,15 +577,34 @@ function AddMemberModal({
     setCodeError("");
     setCodeResult(null);
     const r = await fetch(`/api/persons?code=${encodeURIComponent(code)}`);
-    const d = await r.json();
-    const found = d.data?.persons?.[0];
+    const d = (await r.json()) as PersonsApiListResponse;
+
+    if (!r.ok) {
+      setCodeError(d.message || "No person found with that code.");
+
+      return;
+    }
+
+    if (!Array.isArray(d.data)) {
+      setCodeError(d.message || "Unexpected response from code lookup.");
+
+      return;
+    }
+
+    const found = d.data[0];
 
     if (!found) {
       setCodeError("No person found with that code.");
 
       return;
     }
-    if (existingPersonIds.includes(found.id)) {
+    if (anchorPersonId !== undefined) {
+      if (found.id === anchorPersonId) {
+        setCodeError("Pick someone other than the person you're linking from.");
+
+        return;
+      }
+    } else if (existingPersonIds.includes(found.id)) {
       setCodeError("This person is already in the tree.");
 
       return;
@@ -529,50 +613,82 @@ function AddMemberModal({
   };
 
   useEffect(() => {
-    if (!search) {
+    if (!search.trim()) {
       setResults([]);
+      setSearchLoading(false);
+      setSearchError("");
+      setSearchOpen(false);
 
       return;
     }
+    setSearchLoading(true);
+    setSearchError("");
+    setSearchOpen(true);
     const t = setTimeout(async () => {
-      const r = await fetch(
-        `/api/persons?search=${encodeURIComponent(search)}&limit=10`,
-      );
-      const d = await r.json();
+      try {
+        const r = await fetch(
+          `/api/persons?search=${encodeURIComponent(search.trim())}&limit=10`,
+        );
+        const d = (await r.json()) as PersonsApiListResponse;
 
-      setResults(
-        (d.data?.persons || []).filter(
-          (p: Person) => !existingPersonIds.includes(p.id),
-        ),
-      );
+        if (!r.ok) {
+          setSearchError(d.message || "Search failed.");
+          setResults([]);
+        } else if (!Array.isArray(d.data)) {
+          setSearchError(d.message || "Search returned an unexpected format.");
+          setResults([]);
+        } else {
+          setResults(filterSearchRows(d.data));
+        }
+      } catch {
+        setSearchError("Search failed.");
+        setResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
     }, 300);
 
     return () => clearTimeout(t);
-  }, [search, existingPersonIds]);
+  }, [search, existingPersonIds, anchorPersonId]);
 
   const addExistingToTree = async (personId: number) => {
     setSaving(true);
     setError("");
-    const res = await fetch(`/api/trees/${treeId}/members`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ personId }),
-    });
-    const data = await res.json();
+    const alreadyInTree = existingPersonIds.includes(personId);
 
-    if (!res.ok) {
-      setError(data.message || "Failed.");
-      setSaving(false);
+    if (!alreadyInTree) {
+      const res = await fetch(`/api/trees/${treeId}/members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ personId }),
+      });
+      const data = await res.json();
 
-      return;
+      if (!res.ok) {
+        setError(data.message || "Failed.");
+        setSaving(false);
+
+        return;
+      }
     }
+
     if (prefillRelativeOf) {
       const { person: anchor, relType, asPersonA } = prefillRelativeOf;
       const personAId = asPersonA ? anchor.id : personId;
       const personBId = asPersonA ? personId : anchor.id;
 
-      await createRelationship(personAId, personBId, relType);
+      const rel = await createRelationship(personAId, personBId, relType);
+
+      if (!rel.ok) {
+        setError(rel.message || "Could not create relationship.");
+        setSaving(false);
+
+        return;
+      }
     }
+
+    setSearchOpen(false);
+    setSaving(false);
     onSaved();
   };
 
@@ -604,12 +720,17 @@ function AddMemberModal({
     : "Add Person to Tree";
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
-      <Card className="max-h-[90vh] w-full max-w-md overflow-y-auto shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-primary">{title}</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="max-h-[90vh] max-w-md gap-0 overflow-y-auto p-0 sm:max-w-md">
+        <DialogHeader className="space-y-0 p-6 pb-0 text-left">
+          <DialogTitle className="text-xl text-primary">{title}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 px-6 pb-6 pt-2">
           {error && (
             <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">
               {error}
@@ -618,32 +739,93 @@ function AddMemberModal({
 
           {!showCreate ? (
             <>
-              <div className="space-y-2">
-                <Label>Search existing people</Label>
-                <Input
-                  placeholder="Type a name..."
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-                {results.length > 0 && (
-                  <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border bg-popover">
-                    {results.map((p) => (
-                      <button
-                        key={p.id}
-                        className="flex w-full items-center justify-between border-b border-border px-3 py-2.5 text-left text-sm last:border-0 hover:bg-accent"
-                        disabled={saving}
-                        type="button"
-                        onClick={() => addExistingToTree(p.id)}
-                      >
-                        <span className="truncate text-left" title={formatPersonDisplayName(p)}>
-                          {formatPersonDisplayName(p)}
-                        </span>
-                        <span className="text-xs text-primary">Add →</span>
-                      </button>
-                    ))}
+              <Popover modal open={searchOpen} onOpenChange={setSearchOpen}>
+                <div className="space-y-2">
+                  <Label htmlFor="add-member-search">
+                    Search existing people
+                  </Label>
+                  <PopoverAnchor asChild>
+                    <Input
+                      autoComplete="off"
+                      id="add-member-search"
+                      placeholder="Type a name..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onFocus={() => {
+                        if (search.trim()) setSearchOpen(true);
+                      }}
+                    />
+                  </PopoverAnchor>
+                </div>
+                <PopoverContent
+                  align="start"
+                  className="w-[min(100vw-2rem,var(--radix-popover-trigger-width))] p-0"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
+                  <div className="max-h-48 overflow-y-auto py-1">
+                    {searchLoading && (
+                      <p className="px-3 py-2 text-sm text-muted-foreground">
+                        Searching…
+                      </p>
+                    )}
+                    {!searchLoading && searchError && (
+                      <p className="px-3 py-2 text-sm text-destructive">
+                        {searchError}
+                      </p>
+                    )}
+                    {!searchLoading &&
+                      !searchError &&
+                      search.trim() &&
+                      results.length === 0 && (
+                        <p className="px-3 py-2 text-sm text-muted-foreground">
+                          No matches
+                        </p>
+                      )}
+                    {!searchLoading &&
+                      results.map((p) => {
+                        const alreadyMember =
+                          anchorPersonId === undefined &&
+                          existingPersonIds.includes(p.id);
+
+                        return (
+                          <Button
+                            key={p.id}
+                            className="h-auto w-full flex-col items-stretch gap-0.5 rounded-none px-3 py-2.5 text-left text-sm font-normal"
+                            disabled={saving || alreadyMember}
+                            type="button"
+                            variant="ghost"
+                            onClick={() =>
+                              alreadyMember ? undefined : addExistingToTree(p.id)
+                            }
+                          >
+                            <span className="flex w-full items-center justify-between gap-2">
+                              <span
+                                className="min-w-0 truncate text-left"
+                                title={formatPersonDisplayName(p)}
+                              >
+                                {formatPersonDisplayName(p)}
+                              </span>
+                              {alreadyMember ? (
+                                <span className="shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                                  In tree
+                                </span>
+                              ) : (
+                                <span className="shrink-0 text-xs text-primary">
+                                  Add →
+                                </span>
+                              )}
+                            </span>
+                            {p.personCode ? (
+                              <span className="w-full truncate text-left font-mono text-[10px] text-muted-foreground">
+                                {p.personCode}
+                              </span>
+                            ) : null}
+                          </Button>
+                        );
+                      })}
                   </div>
-                )}
-              </div>
+                </PopoverContent>
+              </Popover>
 
               <div className="space-y-2 border-t border-border pt-4">
                 <Label>
@@ -685,9 +867,11 @@ function AddMemberModal({
                       >
                         {formatPersonDisplayName(codeResult)}
                       </p>
-                      <p className="font-mono text-xs text-muted-foreground">
-                        {(codeResult as any).personCode}
-                      </p>
+                      {codeResult.personCode ? (
+                        <p className="font-mono text-xs text-muted-foreground">
+                          {codeResult.personCode}
+                        </p>
+                      ) : null}
                     </div>
                     <Button
                       disabled={saving}
@@ -749,9 +933,9 @@ function AddMemberModal({
           >
             Close
           </Button>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -810,23 +994,30 @@ function InviteModal({
   };
 
   return (
-    <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm dark:bg-black/60">
-      <Card className="w-full max-w-md shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-primary">Invite a Family Member</CardTitle>
-          <p className="text-sm text-muted-foreground">
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent className="max-w-md gap-0 overflow-y-auto p-0 sm:max-w-md">
+        <DialogHeader className="space-y-2 p-6 pb-0 text-left">
+          <DialogTitle className="text-xl text-primary">
+            Invite a Family Member
+          </DialogTitle>
+          <DialogDescription>
             They&apos;ll get an email with a link to join this tree and fill in
             their own details.
-          </p>
-        </CardHeader>
-        <CardContent>
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 px-6 pb-6 pt-2">
           {error && (
-            <div className="mb-3 rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">
+            <div className="rounded-md border border-destructive/50 bg-destructive/10 px-2 py-2 text-sm text-destructive">
               {error}
             </div>
           )}
           {success && (
-            <div className="mb-3 rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+            <div className="rounded-md border border-emerald-200 bg-emerald-50 px-2 py-2 text-sm text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
               {success}
             </div>
           )}
@@ -897,9 +1088,9 @@ function InviteModal({
               </Button>
             </div>
           </form>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -923,7 +1114,8 @@ function AddRelativeModal({
   onSaved: () => void;
 }) {
   const relType = role === "spouse" ? "spouse" : "parent_child";
-  const asPersonA = role === "parent" || role === "spouse";
+  // parent_child: API uses personA = parent, personB = child (see relationship inference).
+  const asPersonA = role === "child" || role === "spouse";
 
   return (
     <AddMemberModal
@@ -947,12 +1139,17 @@ export default function TreeViewPage() {
         tree: FamilyTree;
         persons: Person[];
         relationships: Relationship[];
+        myRole: string | null;
+        canEdit: boolean;
+        canManage: boolean;
       }>(`/api/trees/${id}`),
     enabled: !!id,
   });
   const tree = data?.tree ?? null;
   const persons = data?.persons ?? [];
   const relationships = data?.relationships ?? [];
+  const canEdit = data?.canEdit ?? false;
+  const canManage = data?.canManage ?? false;
   const loading = isPending;
   const fetchTree = () => {
     void refetch();
@@ -960,6 +1157,10 @@ export default function TreeViewPage() {
   const [showAddMember, setShowAddMember] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showInvite, setShowInvite] = useState(false);
+  const [showRename, setShowRename] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renameSaving, setRenameSaving] = useState(false);
+  const [renameError, setRenameError] = useState("");
   const [addRelative, setAddRelative] = useState<{
     person: Person;
     role: RelativeRole;
@@ -989,8 +1190,20 @@ export default function TreeViewPage() {
   }
   if (!tree) {
     return (
-      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-background text-destructive">
-        Tree not found.
+      <div className="fixed inset-0 z-[100] overflow-y-auto bg-background">
+        <NotFoundView
+          description="This family tree may have been deleted, or you don't have access to it."
+          links={[
+            { href: "/trees", label: "Trees" },
+            { href: "/persons", label: "People" },
+            { href: "/dashboard", label: "Dashboard" },
+          ]}
+          primaryHref="/trees"
+          primaryLabel="Back to Trees"
+          secondaryHref="/dashboard"
+          secondaryLabel="Dashboard"
+          title="Tree not found"
+        />
       </div>
     );
   }
@@ -1005,7 +1218,26 @@ export default function TreeViewPage() {
             <Link href="/trees">← Trees</Link>
           </Button>
           <div>
-            <h1 className="text-lg font-bold text-primary">{tree.name}</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="text-lg font-bold text-primary">{tree.name}</h1>
+              {canManage && (
+                <Button
+                  aria-label="Rename tree"
+                  className="h-7 w-7 text-muted-foreground hover:text-primary"
+                  size="icon"
+                  title="Rename tree"
+                  type="button"
+                  variant="ghost"
+                  onClick={() => {
+                    setRenameValue(tree.name);
+                    setRenameError("");
+                    setShowRename(true);
+                  }}
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
             {tree.description && (
               <p className="text-xs text-muted-foreground">
                 {tree.description}
@@ -1023,17 +1255,21 @@ export default function TreeViewPage() {
           >
             {tree.visibility}
           </span>
-          <Button size="sm" onClick={() => setShowAddMember(true)}>
-            + Add Person
-          </Button>
-          <Button
-            className="border-primary/40 text-primary"
-            size="sm"
-            variant="outline"
-            onClick={() => setShowInvite(true)}
-          >
-            Invite Family
-          </Button>
+          {canEdit && (
+            <Button size="sm" onClick={() => setShowAddMember(true)}>
+              + Add Person
+            </Button>
+          )}
+          {canManage && (
+            <Button
+              className="border-primary/40 text-primary"
+              size="sm"
+              variant="outline"
+              onClick={() => setShowInvite(true)}
+            >
+              Invite Family
+            </Button>
+          )}
           <Button
             size="sm"
             variant="secondary"
@@ -1047,20 +1283,35 @@ export default function TreeViewPage() {
       <div className="flex min-h-0 flex-1 overflow-hidden">
         <div className="flex min-h-0 min-w-0 flex-1 flex-col">
           {persons.length === 0 ? (
-            <StartWizard
-              treeId={Number(id)}
-              onDone={() => {
-                fetchTree();
-              }}
-            />
+            canEdit ? (
+              <StartWizard
+                treeId={Number(id)}
+                onDone={() => {
+                  fetchTree();
+                }}
+              />
+            ) : (
+              <div className="flex h-full flex-col items-center justify-center p-6 text-center">
+                <p className="mb-2 text-5xl">🌳</p>
+                <h2 className="text-lg font-semibold text-primary">
+                  This tree is empty
+                </h2>
+                <p className="mt-2 max-w-sm text-sm text-muted-foreground">
+                  You can view this tree; ask the owner for edit access to add
+                  people.
+                </p>
+              </div>
+            )
           ) : (
             <div className="relative min-h-0 flex-1">
               <FamilyTreeViewer
                 persons={persons}
                 relationships={relationships}
                 rootPersonId={tree.rootPersonId}
-                onAddRelative={(person, role) =>
-                  setAddRelative({ person, role })
+                onAddRelative={
+                  canEdit
+                    ? (person, role) => setAddRelative({ person, role })
+                    : undefined
                 }
               />
             </div>
@@ -1097,26 +1348,34 @@ export default function TreeViewPage() {
                       )}
                     </div>
                   </Link>
-                  <div className="hidden shrink-0 flex-col gap-1 group-hover:flex">
-                    <button
-                      className="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-primary/10"
-                      title="Add child"
-                      onClick={() =>
-                        setAddRelative({ person: p, role: "child" })
-                      }
-                    >
-                      +Child
-                    </button>
-                    <button
-                      className="rounded px-1.5 py-0.5 text-xs text-primary hover:bg-primary/10"
-                      title="Add spouse"
-                      onClick={() =>
-                        setAddRelative({ person: p, role: "spouse" })
-                      }
-                    >
-                      +Spouse
-                    </button>
-                  </div>
+                  {canEdit && (
+                    <div className="hidden shrink-0 flex-col gap-1 group-hover:flex">
+                      <Button
+                        className="h-7 px-1.5 text-xs text-primary"
+                        size="xs"
+                        title="Add child"
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          setAddRelative({ person: p, role: "child" })
+                        }
+                      >
+                        +Child
+                      </Button>
+                      <Button
+                        className="h-7 px-1.5 text-xs text-primary"
+                        size="xs"
+                        title="Add spouse"
+                        type="button"
+                        variant="ghost"
+                        onClick={() =>
+                          setAddRelative({ person: p, role: "spouse" })
+                        }
+                      >
+                        +Spouse
+                      </Button>
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -1135,7 +1394,7 @@ export default function TreeViewPage() {
         )}
       </div>
 
-      {showAddMember && (
+      {showAddMember && canEdit && (
         <AddMemberModal
           existingPersonIds={existingPersonIds}
           treeId={Number(id)}
@@ -1147,7 +1406,7 @@ export default function TreeViewPage() {
         />
       )}
 
-      {addRelative && (
+      {addRelative && canEdit && (
         <AddRelativeModal
           anchor={addRelative.person}
           existingPersonIds={existingPersonIds}
@@ -1161,13 +1420,90 @@ export default function TreeViewPage() {
         />
       )}
 
-      {showInvite && (
+      {showInvite && canManage && (
         <InviteModal
           persons={persons}
           treeId={Number(id)}
           onClose={() => setShowInvite(false)}
         />
       )}
+
+      <Dialog
+        open={showRename}
+        onOpenChange={(open) => {
+          if (!open) setShowRename(false);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Rename tree</DialogTitle>
+            <DialogDescription>
+              Update the display name for this family tree. Only the owner can
+              change it.
+            </DialogDescription>
+          </DialogHeader>
+          <form
+            className="space-y-4"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              const name = renameValue.trim();
+              if (!name) {
+                setRenameError("Name is required.");
+                return;
+              }
+              setRenameSaving(true);
+              setRenameError("");
+              try {
+                const res = await fetch(`/api/trees/${id}`, {
+                  method: "PATCH",
+                  credentials: "include",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ name }),
+                });
+                const body = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                  setRenameError(
+                    (body as { message?: string }).message ||
+                      "Could not rename tree.",
+                  );
+                  return;
+                }
+                setShowRename(false);
+                await refetch();
+              } finally {
+                setRenameSaving(false);
+              }
+            }}
+          >
+            <div className="space-y-2">
+              <Label htmlFor="tree-name">Name</Label>
+              <Input
+                autoFocus
+                id="tree-name"
+                maxLength={120}
+                value={renameValue}
+                onChange={(e) => setRenameValue(e.target.value)}
+              />
+              {renameError ? (
+                <p className="text-sm text-destructive">{renameError}</p>
+              ) : null}
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="secondary"
+                disabled={renameSaving}
+                onClick={() => setShowRename(false)}
+              >
+                Cancel
+              </Button>
+              <Button disabled={renameSaving} type="submit">
+                {renameSaving ? "Saving…" : "Save"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

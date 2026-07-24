@@ -11,6 +11,14 @@ export interface AuthUser {
   role: string;
   profilePhotoUrl?: string | null;
   linkedPersonId?: number | null;
+  linkedPerson?: {
+    id: number;
+    firstName: string;
+    middleName?: string | null;
+    lastName: string;
+    maidenName?: string | null;
+    nickname?: string | null;
+  } | null;
   /** Full structured name when linked to a Person, else matches `name`. */
   displayName?: string;
   /** Two-letter avatar initials. */

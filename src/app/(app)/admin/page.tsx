@@ -4,9 +4,37 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
+import { Badge } from "@/src/components/ui/badge";
+import { Button } from "@/src/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/src/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/src/components/ui/select";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/src/components/ui/tabs";
 import { useAuth } from "@/src/hooks/useAuth";
-import { getInitialsFromDisplayName } from "@/src/lib/personDisplayName";
-import { apiGetData } from "@/src/lib/api-fetch";
+import {
+  formatPersonDisplayName,
+  getInitialsFromDisplayName,
+} from "@/src/lib/personDisplayName";
+import { apiGetData, apiGetPersonList } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
 
 interface User {
@@ -18,6 +46,18 @@ interface User {
   profilePhotoUrl?: string;
   displayName?: string;
 }
+interface PersonSummary {
+  id: number;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  maidenName?: string | null;
+  nickname?: string | null;
+}
+interface TreeSummary {
+  id: number;
+  name: string;
+}
 interface MergeRequest {
   id: number;
   type: string;
@@ -28,18 +68,22 @@ interface MergeRequest {
   targetPersonId?: number;
   sourceTreeId?: number;
   targetTreeId?: number;
+  sourcePerson?: PersonSummary | null;
+  targetPerson?: PersonSummary | null;
+  sourceTree?: TreeSummary | null;
+  targetTree?: TreeSummary | null;
 }
 
 export default function AdminPage() {
   const { user, loading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const [activeTab, setActiveTab] = useState<"overview" | "users" | "merges">(
-    "overview",
-  );
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "users" | "merges" | "audits"
+  >("overview");
   const adminEnabled = user?.role === "admin";
 
-  const [usersQ, mergesQ, personsQ, treesQ, clansQ] = useQueries({
+  const [usersQ, mergesQ, personsQ, treesQ, clansQ, auditsQ] = useQueries({
     queries: [
       {
         queryKey: queryKeys.admin.users,
@@ -59,7 +103,7 @@ export default function AdminPage() {
       },
       {
         queryKey: queryKeys.persons.summary({ limit: 1 }),
-        queryFn: () => apiGetData<{ total: number }>("/api/persons?limit=1"),
+        queryFn: () => apiGetPersonList("/api/persons?limit=1"),
         enabled: adminEnabled,
       },
       {
@@ -70,6 +114,21 @@ export default function AdminPage() {
       {
         queryKey: queryKeys.admin.clansAll,
         queryFn: () => apiGetData<{ clans: unknown[] }>("/api/clans"),
+        enabled: adminEnabled,
+      },
+      {
+        queryKey: queryKeys.mergeAudits.list,
+        queryFn: () =>
+          apiGetData<{
+            audits: Array<{
+              id: number;
+              sourcePersonId: number;
+              targetPersonId: number;
+              performedByUserId: number;
+              createdAt: string;
+              undoneAt?: string | null;
+            }>;
+          }>("/api/merge-audits"),
         enabled: adminEnabled,
       },
     ],
@@ -146,98 +205,136 @@ export default function AdminPage() {
           </Link>
         </div>
 
-        {/* Tab nav */}
-        <div className="flex gap-2 mb-6">
-          {(["overview", "users", "merges"] as const).map((tab) => (
-            <button
-              key={tab}
-              className={`px-4 py-2 rounded-lg text-sm font-medium capitalize transition ${activeTab === tab ? "bg-amber-600 text-white" : "bg-stone-800 text-stone-400 hover:text-white"}`}
-              onClick={() => setActiveTab(tab)}
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) =>
+            setActiveTab(v as "overview" | "users" | "merges" | "audits")
+          }
+        >
+          <TabsList className="mb-6 grid h-auto w-full max-w-2xl grid-cols-4 gap-1 rounded-lg bg-stone-800 p-1">
+            <TabsTrigger
+              className="capitalize text-stone-400 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+              value="overview"
             >
-              {tab}{" "}
-              {tab === "merges" && pendingMerges.length > 0 && (
-                <span className="ml-1 bg-red-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+              Overview
+            </TabsTrigger>
+            <TabsTrigger
+              className="capitalize text-stone-400 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+              value="users"
+            >
+              Users
+            </TabsTrigger>
+            <TabsTrigger
+              className="relative capitalize text-stone-400 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+              value="merges"
+            >
+              Merges
+              {pendingMerges.length > 0 && (
+                <Badge
+                  className="ml-1.5 border-0 bg-red-600 px-1.5 py-0 text-[10px] text-white hover:bg-red-600"
+                  variant="destructive"
+                >
                   {pendingMerges.length}
-                </span>
+                </Badge>
               )}
-            </button>
-          ))}
-        </div>
+            </TabsTrigger>
+            <TabsTrigger
+              className="capitalize text-stone-400 data-[state=active]:bg-amber-600 data-[state=active]:text-white"
+              value="audits"
+            >
+              Audits
+            </TabsTrigger>
+          </TabsList>
 
-        {activeTab === "overview" && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard
-              href="/persons"
-              icon="👥"
-              label="Total People"
-              value={stats.persons}
-            />
-            <StatCard
-              href="/trees"
-              icon="🌳"
-              label="Family Trees"
-              value={stats.trees}
-            />
-            <StatCard
-              href="/clans"
-              icon="🦁"
-              label="Clans"
-              value={stats.clans}
-            />
-            <StatCard
-              highlight={stats.mergeRequests > 0}
-              href="#"
-              icon="🔗"
-              label="Pending Merges"
-              value={stats.mergeRequests}
-              onClick={() => setActiveTab("merges")}
-            />
-          </div>
-        )}
-
-        {activeTab === "users" && (
-          <div className="bg-stone-800 border border-stone-700 rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-stone-700">
-              <h2 className="text-amber-400 font-semibold">
-                All Users ({users.length})
-              </h2>
+          <TabsContent value="overview">
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              <StatCard
+                href="/persons"
+                icon="👥"
+                label="Total People"
+                value={stats.persons}
+              />
+              <StatCard
+                href="/trees"
+                icon="🌳"
+                label="Family Trees"
+                value={stats.trees}
+              />
+              <StatCard
+                href="/clans"
+                icon="🦁"
+                label="Clans"
+                value={stats.clans}
+              />
+              <StatCard
+                highlight={stats.mergeRequests > 0}
+                href="#"
+                icon="🔗"
+                label="Pending Merges"
+                value={stats.mergeRequests}
+                onClick={() => setActiveTab("merges")}
+              />
             </div>
-            <div className="divide-y divide-stone-700">
-              {users.map((u) => (
-                <div key={u.id} className="flex items-center gap-4 px-4 py-3">
-                  <div className="w-9 h-9 rounded-full bg-stone-700 flex items-center justify-center text-amber-400 font-bold text-sm flex-shrink-0">
-                    {getInitialsFromDisplayName(u.displayName || u.name)}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p
-                      className="text-white font-medium truncate"
-                      title={u.displayName || u.name}
-                    >
-                      {u.displayName || u.name}
+          </TabsContent>
+
+          <TabsContent value="users">
+            <div className="overflow-hidden rounded-xl border border-stone-700 bg-stone-800">
+              <div className="p-4 border-b border-stone-700">
+                <h2 className="text-amber-400 font-semibold">
+                  All Users ({users.length})
+                </h2>
+              </div>
+              <div className="divide-y divide-stone-700">
+                {users.map((u) => (
+                  <div key={u.id} className="flex items-center gap-4 px-4 py-3">
+                    <div className="w-9 h-9 rounded-full bg-stone-700 flex items-center justify-center text-amber-400 font-bold text-sm flex-shrink-0">
+                      {getInitialsFromDisplayName(u.displayName || u.name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className="text-white font-medium truncate"
+                        title={u.displayName || u.name}
+                      >
+                        {u.displayName || u.name}
+                      </p>
+                      <p className="text-stone-400 text-xs truncate">
+                        {u.email}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Select
+                        value={u.role}
+                        onValueChange={(r) => updateRole(u.id, r)}
+                      >
+                        <SelectTrigger className="h-8 w-[104px] border-stone-600 bg-stone-700 text-xs text-white focus:ring-amber-500">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="border-stone-600 bg-stone-800 text-white">
+                          <SelectItem
+                            className="text-xs focus:bg-stone-700"
+                            value="user"
+                          >
+                            User
+                          </SelectItem>
+                          <SelectItem
+                            className="text-xs focus:bg-stone-700"
+                            value="admin"
+                          >
+                            Admin
+                          </SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <p className="text-stone-500 text-xs hidden sm:block">
+                      {new Date(u.createdAt).toLocaleDateString()}
                     </p>
-                    <p className="text-stone-400 text-xs truncate">{u.email}</p>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <select
-                      className="text-xs px-2 py-1 bg-stone-700 border border-stone-600 rounded text-white focus:outline-none focus:border-amber-500"
-                      value={u.role}
-                      onChange={(e) => updateRole(u.id, e.target.value)}
-                    >
-                      <option value="user">User</option>
-                      <option value="admin">Admin</option>
-                    </select>
-                  </div>
-                  <p className="text-stone-500 text-xs hidden sm:block">
-                    {new Date(u.createdAt).toLocaleDateString()}
-                  </p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        )}
+          </TabsContent>
 
-        {activeTab === "merges" && (
-          <div className="space-y-4">
+          <TabsContent className="space-y-4" value="merges">
             {pendingMerges.length === 0 ? (
               <div className="text-center py-16 text-stone-400">
                 <p className="text-4xl mb-3">✅</p>
@@ -263,19 +360,53 @@ export default function AdminPage() {
                       </div>
                       {mr.type === "duplicate_person" && (
                         <p className="text-stone-300 text-sm">
-                          Merge Person #{mr.sourcePersonId} → Person #
-                          {mr.targetPersonId}
+                          Merge{" "}
+                          <Link
+                            className="text-amber-400 hover:underline"
+                            href={`/persons/${mr.sourcePersonId}`}
+                          >
+                            {mr.sourcePerson
+                              ? formatPersonDisplayName(mr.sourcePerson)
+                              : `Person #${mr.sourcePersonId}`}
+                          </Link>{" "}
+                          →{" "}
+                          <Link
+                            className="text-amber-400 hover:underline"
+                            href={`/persons/${mr.targetPersonId}`}
+                          >
+                            {mr.targetPerson
+                              ? formatPersonDisplayName(mr.targetPerson)
+                              : `Person #${mr.targetPersonId}`}
+                          </Link>
+                          <span className="ms-1 font-mono text-[10px] text-stone-500">
+                            #{mr.sourcePersonId} → #{mr.targetPersonId}
+                          </span>
                         </p>
                       )}
                       {mr.type === "family_trees" && (
                         <p className="text-stone-300 text-sm">
-                          Merge Tree #{mr.sourceTreeId} → Tree #
-                          {mr.targetTreeId}
+                          Merge{" "}
+                          <Link
+                            className="text-amber-400 hover:underline"
+                            href={`/trees/${mr.sourceTreeId}`}
+                          >
+                            {mr.sourceTree?.name || `Tree #${mr.sourceTreeId}`}
+                          </Link>{" "}
+                          →{" "}
+                          <Link
+                            className="text-amber-400 hover:underline"
+                            href={`/trees/${mr.targetTreeId}`}
+                          >
+                            {mr.targetTree?.name || `Tree #${mr.targetTreeId}`}
+                          </Link>
+                          <span className="ms-1 font-mono text-[10px] text-stone-500">
+                            #{mr.sourceTreeId} → #{mr.targetTreeId}
+                          </span>
                         </p>
                       )}
                       {mr.reason && (
-                        <p className="text-stone-400 text-sm mt-1 italic">
-                          "{mr.reason}"
+                        <p className="mt-1 text-sm italic text-stone-400">
+                          <q>{mr.reason}</q>
                         </p>
                       )}
                       <p className="text-stone-500 text-xs mt-2">
@@ -287,8 +418,55 @@ export default function AdminPage() {
                 </div>
               ))
             )}
-          </div>
-        )}
+          </TabsContent>
+
+          <TabsContent value="audits">
+            <div className="overflow-hidden rounded-xl border border-stone-700 bg-stone-800">
+              <div className="border-b border-stone-700 p-4">
+                <h2 className="font-semibold text-amber-400">
+                  Recent person merges
+                </h2>
+              </div>
+              <div className="divide-y divide-stone-700">
+                {(auditsQ.data?.audits ?? []).length === 0 ? (
+                  <p className="p-6 text-sm text-stone-400">No merge audits yet.</p>
+                ) : (
+                  (auditsQ.data?.audits ?? []).map((a) => (
+                    <div
+                      key={a.id}
+                      className="flex items-center justify-between gap-3 px-4 py-3"
+                    >
+                      <div className="text-sm text-stone-200">
+                        <p>
+                          #{a.sourcePersonId} → #{a.targetPersonId}
+                        </p>
+                        <p className="text-xs text-stone-500">
+                          by user #{a.performedByUserId} ·{" "}
+                          {new Date(a.createdAt).toLocaleString()}
+                          {a.undoneAt
+                            ? ` · undone ${new Date(a.undoneAt).toLocaleString()}`
+                            : ""}
+                        </p>
+                      </div>
+                      {!a.undoneAt ? (
+                        <UndoMergeButton
+                          auditId={a.id}
+                          onUndone={() =>
+                            queryClient.invalidateQueries({
+                              queryKey: queryKeys.mergeAudits.list,
+                            })
+                          }
+                        />
+                      ) : (
+                        <Badge variant="secondary">Undone</Badge>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );
@@ -325,59 +503,171 @@ function StatCard({
 
   if (onClick)
     return (
-      <button className="text-left" onClick={onClick}>
+      <Button
+        className="h-auto w-full justify-start p-0 text-left font-normal hover:bg-transparent"
+        type="button"
+        variant="ghost"
+        onClick={onClick}
+      >
         {inner}
-      </button>
+      </Button>
     );
 
   return <Link href={href}>{inner}</Link>;
 }
 
-function AdminReviewButtons({ mergeRequestId }: { mergeRequestId: number }) {
-  const queryClient = useQueryClient();
+function UndoMergeButton({
+  auditId,
+  onUndone,
+}: {
+  auditId: number;
+  onUndone: () => void;
+}) {
+  const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const review = async (decision: "approved" | "rejected") => {
-    if (
-      !confirm(
-        `${decision === "approved" ? "Approve" : "Reject"} this merge request?`,
-      )
-    )
-      return;
+  const undo = async () => {
     setLoading(true);
-    await fetch(`/api/merge-requests/${mergeRequestId}/review`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ decision }),
-    });
-    setLoading(false);
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.mergeRequests.list({ all: true, status: "pending" }),
-    });
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.mergeRequests.list({ all: true }),
-    });
-    queryClient.invalidateQueries({
-      queryKey: queryKeys.mergeRequests.list({ all: false }),
-    });
+    try {
+      await fetch(`/api/merge-audits/${auditId}/undo`, { method: "POST" });
+      setOpen(false);
+      onUndone();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col gap-2 min-w-24">
-      <button
-        className="py-1.5 px-3 bg-green-800 hover:bg-green-700 text-green-300 text-xs font-medium rounded-lg transition"
-        disabled={loading}
-        onClick={() => review("approved")}
+    <AlertDialog open={open} onOpenChange={setOpen}>
+      <Button
+        size="sm"
+        variant="outline"
+        className="border-stone-600 text-xs"
+        type="button"
+        onClick={() => setOpen(true)}
       >
-        ✓ Approve
-      </button>
-      <button
-        className="py-1.5 px-3 bg-red-900/50 hover:bg-red-900 text-red-400 text-xs font-medium rounded-lg transition"
-        disabled={loading}
-        onClick={() => review("rejected")}
+        Undo
+      </Button>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Undo this merge?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This restores the source person and rewires relationships from the
+            audit snapshot. This cannot always be perfect if data changed after
+            the merge.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={loading}
+            onClick={(e) => {
+              e.preventDefault();
+              void undo();
+            }}
+          >
+            {loading ? "Undoing…" : "Undo merge"}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+}
+
+function AdminReviewButtons({ mergeRequestId }: { mergeRequestId: number }) {
+  const queryClient = useQueryClient();
+  const [loading, setLoading] = useState(false);
+  const [pending, setPending] = useState<"approved" | "rejected" | null>(null);
+
+  const review = async (decision: "approved" | "rejected") => {
+    setLoading(true);
+    try {
+      await fetch(`/api/merge-requests/${mergeRequestId}/review`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ decision }),
+      });
+      setPending(null);
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.mergeRequests.list({ all: true, status: "pending" }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.mergeRequests.list({ all: true }),
+      });
+      queryClient.invalidateQueries({
+        queryKey: queryKeys.mergeRequests.list({ all: false }),
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <>
+      <div className="flex min-w-24 flex-col gap-2">
+        <Button
+          className="bg-green-800 text-xs font-medium text-green-300 hover:bg-green-700"
+          disabled={loading}
+          size="sm"
+          type="button"
+          onClick={() => setPending("approved")}
+        >
+          ✓ Approve
+        </Button>
+        <Button
+          className="bg-red-900/50 text-xs font-medium text-red-400 hover:bg-red-900"
+          disabled={loading}
+          size="sm"
+          type="button"
+          variant="destructive"
+          onClick={() => setPending("rejected")}
+        >
+          ✗ Reject
+        </Button>
+      </div>
+
+      <AlertDialog
+        open={pending !== null}
+        onOpenChange={(open) => {
+          if (!open) setPending(null);
+        }}
       >
-        ✗ Reject
-      </button>
-    </div>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {pending === "approved"
+                ? "Approve this merge request?"
+                : "Reject this merge request?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pending === "approved"
+                ? "Approving will apply the merge. This action is recorded in merge audits."
+                : "Rejecting will close the request without merging."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={loading}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                pending === "rejected"
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              disabled={loading || !pending}
+              onClick={(e) => {
+                e.preventDefault();
+                if (pending) void review(pending);
+              }}
+            >
+              {loading
+                ? "Working…"
+                : pending === "approved"
+                  ? "Approve"
+                  : "Reject"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }

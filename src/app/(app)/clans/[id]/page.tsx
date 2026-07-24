@@ -16,6 +16,7 @@ import {
 } from "@/src/lib/personDisplayName";
 import { apiGetData } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
+import { NotFoundView } from "@/src/components/NotFoundView";
 
 interface Clan {
   id: number;
@@ -80,9 +81,19 @@ export default function ClanDetailPage() {
   }
   if (!clan) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-destructive">
-        Clan not found.
-      </div>
+      <NotFoundView
+        description="This clan may have been removed, or the link is incorrect."
+        links={[
+          { href: "/clans", label: "Clans" },
+          { href: "/persons", label: "People" },
+          { href: "/dashboard", label: "Dashboard" },
+        ]}
+        primaryHref="/clans"
+        primaryLabel="Back to Clans"
+        secondaryHref="/dashboard"
+        secondaryLabel="Dashboard"
+        title="Clan not found"
+      />
     );
   }
 

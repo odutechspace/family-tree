@@ -11,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import { DatePicker } from "@/src/components/ui/date-picker";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import {
@@ -79,6 +80,23 @@ function NewPersonForm() {
       if (!body.birthDate) delete body.birthDate;
       if (!body.deathDate) delete body.deathDate;
 
+      if (treeId) {
+        const res = await fetch(`/api/trees/${treeId}/members`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ person: body }),
+        });
+        const data = await res.json();
+
+        if (!res.ok) {
+          setError(data.message || "Failed to create person and add to tree.");
+          return;
+        }
+
+        router.push(`/trees/${treeId}`);
+        return;
+      }
+
       const res = await fetch("/api/persons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -88,21 +106,10 @@ function NewPersonForm() {
 
       if (!res.ok) {
         setError(data.message || "Failed to create person.");
-
         return;
       }
-      const personId = data.data.person.id;
 
-      if (treeId) {
-        await fetch(`/api/trees/${treeId}/members`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ personId }),
-        });
-        router.push(`/trees/${treeId}`);
-      } else {
-        router.push(`/persons/${personId}`);
-      }
+      router.push(`/persons/${data.data.person.id}`);
     } catch {
       setError("Something went wrong.");
     } finally {
@@ -193,12 +200,14 @@ function NewPersonForm() {
               <CardTitle className="text-primary">Life Details</CardTitle>
             </CardHeader>
             <CardContent className="grid grid-cols-2 gap-4">
-              <Field
-                label="Birth Date"
-                type="date"
-                value={form.birthDate}
-                onChange={(v) => set("birthDate", v)}
-              />
+              <div className="space-y-2">
+                <Label>Birth Date</Label>
+                <DatePicker
+                  placeholder="Select birth date"
+                  value={form.birthDate}
+                  onChange={(v) => set("birthDate", v)}
+                />
+              </div>
               <Field
                 label="Birth Place"
                 value={form.birthPlace}
@@ -224,12 +233,14 @@ function NewPersonForm() {
               </div>
               {form.aliveStatus === "deceased" && (
                 <>
-                  <Field
-                    label="Death Date"
-                    type="date"
-                    value={form.deathDate}
-                    onChange={(v) => set("deathDate", v)}
-                  />
+                  <div className="space-y-2">
+                    <Label>Death Date</Label>
+                    <DatePicker
+                      placeholder="Select death date"
+                      value={form.deathDate}
+                      onChange={(v) => set("deathDate", v)}
+                    />
+                  </div>
                   <Field
                     label="Death Place"
                     value={form.deathPlace}

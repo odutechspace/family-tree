@@ -32,7 +32,13 @@ export async function POST(req: NextRequest) {
     // Save the token in an HTTP-only cookie
     const response = apiSuccess({ token }, "Successfully Logged In");
 
-    response.cookies.set("token", token, { httpOnly: true, maxAge: 3600 }); // 1 hour
+    // Match JWT expiry in `generateToken` (24h)
+    response.cookies.set("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24,
+    });
 
     return response;
   } catch (error: any) {

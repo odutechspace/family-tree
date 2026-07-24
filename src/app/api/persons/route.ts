@@ -1,17 +1,19 @@
 import { NextRequest } from "next/server";
 
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
-import { Person } from "@/src/api/entities/Person";
+import { AliveStatus, Person, PersonVisibility } from "@/src/api/entities/Person";
 import { User } from "@/src/api/entities/User";
 import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
-import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
+import { apiError, apiListSuccess, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
 import { awardXP } from "@/src/api/services/gamification/gamification.service";
 import { generatePersonCode, tryHashPhone } from "@/src/lib/identity";
+import { ensureSteward, canViewPerson } from "@/src/lib/permissions";
 
 export async function GET(req: NextRequest) {
   await initializeDataSource();
+  const auth = await getAuthUser(req);
   const repo = AppDataSource.getRepository(Person);
 
   const { searchParams } = new URL(req.url);
@@ -30,8 +32,13 @@ export async function GET(req: NextRequest) {
     if (!person)
       return apiError(ApiError.notFound("No person found with that code."));
 
-    return apiSuccess(
-      { persons: [person], total: 1, page: 1, limit: 1 },
+    if (!(await canViewPerson(auth, person))) {
+      return apiError(ApiError.forbidden("You cannot view this person."));
+    }
+
+    return apiListSuccess(
+      [person],
+      { total: 1, page: 1, limit: 1 },
       "Person found by code",
     );
   }
@@ -40,7 +47,7 @@ export async function GET(req: NextRequest) {
 
   if (search) {
     qb.where(
-      "CONCAT(person.firstName, ' ', person.lastName) LIKE :search OR person.nickname LIKE :search",
+      "CONCAT(COALESCE(person.firstName, ''), ' ', COALESCE(person.lastName, '')) LIKE :search OR person.nickname LIKE :search",
       { search: `%${search}%` },
     );
   }
@@ -48,12 +55,23 @@ export async function GET(req: NextRequest) {
     qb.andWhere("person.clanId = :clanId", { clanId: Number(clanId) });
   }
 
-  qb.skip((page - 1) * limit)
-    .take(limit)
-    .orderBy("person.lastName", "ASC");
-  const [persons, total] = await qb.getManyAndCount();
+  // Oversample then filter by visibility so directory pages fill with viewable people.
+  const scanLimit = Math.min(Math.max(limit * 5, 100), 500);
+  const candidates = await qb
+    .orderBy("person.lastName", "ASC")
+    .addOrderBy("person.firstName", "ASC")
+    .take(scanLimit)
+    .getMany();
 
-  return apiSuccess({ persons, total, page, limit }, "Persons retrieved");
+  const visibility = await Promise.all(
+    candidates.map(async (p) => ((await canViewPerson(auth, p)) ? p : null)),
+  );
+  const visible = visibility.filter((p): p is Person => p != null);
+  const total = visible.length;
+  const start = (page - 1) * limit;
+  const persons = visible.slice(start, start + limit);
+
+  return apiListSuccess(persons, { total, page, limit }, "Persons retrieved");
 }
 
 export async function POST(req: NextRequest) {
@@ -85,8 +103,15 @@ export async function POST(req: NextRequest) {
     personCode,
     ...(phoneHash ? { phoneHash } : {}),
     createdByUserId: user.id,
+    visibility:
+      (rest.visibility as PersonVisibility) ||
+      ((rest.aliveStatus as string) === AliveStatus.ALIVE
+        ? PersonVisibility.STEWARDS
+        : PersonVisibility.CONNECTIONS),
   });
   const saved = (await repo.save(person)) as unknown as Person;
+
+  await ensureSteward(saved.id, user.id, user.id);
 
   // Auto-link: if the logged-in user has a phoneHash and it matches, link immediately
   if (phoneHash) {

@@ -29,6 +29,9 @@ export const XP_VALUES: Record<XPEventType, number> = {
   [XPEventType.ACHIEVEMENT_UNLOCKED]: 0,
   [XPEventType.QUEST_COMPLETED]: 0,
   [XPEventType.PROFILE_COMPLETE]: 50,
+  [XPEventType.CLAIM_PERSON]: 40,
+  [XPEventType.CONNECT_RELATIVE]: 60,
+  [XPEventType.CONFIRM_MERGE]: 80,
 };
 
 export interface GamificationResult {
@@ -367,6 +370,9 @@ export async function awardXP(
     [XPEventType.CREATE_TREE]: "treesCreated",
     [XPEventType.SUBMIT_MERGE_REQUEST]: "mergeRequestsSubmitted",
     [XPEventType.MERGE_APPROVED]: "mergesApproved",
+    [XPEventType.CLAIM_PERSON]: "claimsMade",
+    [XPEventType.CONNECT_RELATIVE]: "connectionsMade",
+    [XPEventType.CONFIRM_MERGE]: "mergesApproved",
   };
 
   const field = counterMap[eventType];

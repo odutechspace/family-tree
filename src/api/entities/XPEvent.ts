@@ -28,6 +28,9 @@ export enum XPEventType {
   ACHIEVEMENT_UNLOCKED = "achievement_unlocked",
   QUEST_COMPLETED = "quest_completed",
   PROFILE_COMPLETE = "profile_complete",
+  CLAIM_PERSON = "claim_person",
+  CONNECT_RELATIVE = "connect_relative",
+  CONFIRM_MERGE = "confirm_merge",
 }
 
 @Entity()

@@ -3,11 +3,15 @@ import { NextRequest } from "next/server";
 import { initializeDataSource, AppDataSource } from "@/src/config/db";
 import { FamilyTree } from "@/src/api/entities/FamilyTree";
 import { FamilyTreeMember } from "@/src/api/entities/FamilyTreeMember";
-import { Person } from "@/src/api/entities/Person";
-import { Relationship } from "@/src/api/entities/Relationship";
 import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
 import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
+import { getRelatives } from "@/src/api/services/graph/relatives.service";
+import {
+  canEditTree,
+  canManageTree,
+  getTreeMembership,
+} from "@/src/lib/permissions";
 
 export async function GET(
   req: NextRequest,
@@ -15,11 +19,10 @@ export async function GET(
 ) {
   await initializeDataSource();
   const { id } = await params;
+  const auth = await getAuthUser(req);
 
   const treeRepo = AppDataSource.getRepository(FamilyTree);
   const memberRepo = AppDataSource.getRepository(FamilyTreeMember);
-  const personRepo = AppDataSource.getRepository(Person);
-  const relRepo = AppDataSource.getRepository(Relationship);
 
   const tree = await treeRepo.findOne({ where: { id: Number(id) } });
 
@@ -30,58 +33,40 @@ export async function GET(
     .filter((m) => m.personId > 0)
     .map((m) => m.personId);
 
-  /**
-   * Include every person reachable from tree members via relationships.
-   * Otherwise someone can be parent/child of a member (correct `relationship`
-   * row) but never added to `family_tree_member` — e.g. invite linked only
-   * the user, or relationship added from the person profile — and they would
-   * vanish from the tree canvas because the old query required BOTH ends to be
-   * members.
-   */
-  const expandedPersonIds = new Set(memberPersonIds);
-  const MAX_RELATIONSHIP_EXPANSION_ROUNDS = 30;
+  let myRole: string | null = null;
+  let canEdit = false;
+  let canManage = false;
+  let isCollaborator = false;
 
-  for (let round = 0; round < MAX_RELATIONSHIP_EXPANSION_ROUNDS; round++) {
-    const ids = [...expandedPersonIds];
-
-    if (ids.length === 0) break;
-
-    const touching = await relRepo
-      .createQueryBuilder("r")
-      .where("r.personAId IN (:...ids) OR r.personBId IN (:...ids)", { ids })
-      .getMany();
-
-    const before = expandedPersonIds.size;
-
-    for (const r of touching) {
-      expandedPersonIds.add(r.personAId);
-      expandedPersonIds.add(r.personBId);
-    }
-
-    if (expandedPersonIds.size === before) break;
+  if (auth) {
+    const membership = await getTreeMembership(tree.id, auth.id);
+    myRole = membership?.role ?? (tree.ownerUserId === auth.id ? "owner" : null);
+    canEdit = await canEditTree(auth, tree);
+    canManage = await canManageTree(auth, tree);
+    isCollaborator = membership != null || canEdit;
   }
 
-  const allPersonIds = [...expandedPersonIds];
+  // Tree collaborators see every direct member of the shared tree, even people
+  // added by others whose per-person visibility would otherwise hide them.
+  const relatives = await getRelatives(memberPersonIds, {
+    viewerUserId: auth?.id,
+    viewerRole: auth?.role,
+    alwaysVisibleIds: isCollaborator ? memberPersonIds : undefined,
+  });
 
-  let persons: Person[] = [];
-  let relationships: Relationship[] = [];
-
-  if (allPersonIds.length > 0) {
-    persons = await personRepo
-      .createQueryBuilder("p")
-      .where("p.id IN (:...ids)", { ids: allPersonIds })
-      .getMany();
-
-    relationships = await relRepo
-      .createQueryBuilder("r")
-      .where("r.personAId IN (:...ids) AND r.personBId IN (:...ids)", {
-        ids: allPersonIds,
-      })
-      .getMany();
-  }
+  const persons = relatives.nodes.map((n) => n.person);
+  const relationships = relatives.edges.map((e) => e.relationship);
 
   return apiSuccess(
-    { tree, members, persons, relationships },
+    {
+      tree,
+      members,
+      persons,
+      relationships,
+      myRole,
+      canEdit,
+      canManage,
+    },
     "Tree data retrieved",
   );
 }
@@ -100,11 +85,28 @@ export async function PATCH(
   const tree = await repo.findOne({ where: { id: Number(id) } });
 
   if (!tree) return apiError(ApiError.notFound("Family tree not found."));
-  if (tree.ownerUserId !== user.id)
+  if (!(await canManageTree(user, tree)))
     return apiError(ApiError.forbidden("Not authorized."));
 
   const body = await req.json();
-  const updated = await repo.save({ ...tree, ...body });
+  const next: Partial<FamilyTree> = {};
+  if (typeof body.name === "string") {
+    const name = body.name.trim();
+    if (!name) return apiError(ApiError.badRequest("Name is required."));
+    next.name = name;
+  }
+  if (typeof body.description === "string" || body.description === null) {
+    next.description =
+      typeof body.description === "string" ? body.description : null;
+  }
+  if (typeof body.visibility === "string") {
+    next.visibility = body.visibility as FamilyTree["visibility"];
+  }
+  if (Object.keys(next).length === 0) {
+    return apiError(ApiError.badRequest("No valid fields to update."));
+  }
+
+  const updated = await repo.save({ ...tree, ...next });
 
   return apiSuccess({ tree: updated }, "Tree updated");
 }
@@ -123,7 +125,7 @@ export async function DELETE(
   const tree = await repo.findOne({ where: { id: Number(id) } });
 
   if (!tree) return apiError(ApiError.notFound("Family tree not found."));
-  if (tree.ownerUserId !== user.id)
+  if (!(await canManageTree(user, tree)))
     return apiError(ApiError.forbidden("Not authorized."));
 
   await repo.remove(tree);

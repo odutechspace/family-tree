@@ -9,6 +9,21 @@ import { Card, CardContent } from "@/src/components/ui/card";
 import { Textarea } from "@/src/components/ui/textarea";
 import { apiGetData } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
+import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
+
+interface PersonSummary {
+  id: number;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  maidenName?: string | null;
+  nickname?: string | null;
+}
+
+interface TreeSummary {
+  id: number;
+  name: string;
+}
 
 interface MergeRequest {
   id: number;
@@ -22,6 +37,10 @@ interface MergeRequest {
   requestedByUserId: number;
   reviewedAt?: string;
   createdAt: string;
+  sourcePerson?: PersonSummary | null;
+  targetPerson?: PersonSummary | null;
+  sourceTree?: TreeSummary | null;
+  targetTree?: TreeSummary | null;
 }
 
 const STATUS_STYLES: Record<string, string> = {
@@ -122,14 +141,48 @@ export default function MergeRequestsPage() {
 
                       {mr.type === "duplicate_person" && (
                         <p className="text-sm text-foreground">
-                          Merge Person #{mr.sourcePersonId} into Person #
-                          {mr.targetPersonId}
+                          Merge{" "}
+                          <Link
+                            className="font-medium text-primary hover:underline"
+                            href={`/persons/${mr.sourcePersonId}`}
+                          >
+                            {mr.sourcePerson
+                              ? formatPersonDisplayName(mr.sourcePerson)
+                              : `Person #${mr.sourcePersonId}`}
+                          </Link>{" "}
+                          into{" "}
+                          <Link
+                            className="font-medium text-primary hover:underline"
+                            href={`/persons/${mr.targetPersonId}`}
+                          >
+                            {mr.targetPerson
+                              ? formatPersonDisplayName(mr.targetPerson)
+                              : `Person #${mr.targetPersonId}`}
+                          </Link>
+                          <span className="ms-1 font-mono text-[10px] text-muted-foreground">
+                            #{mr.sourcePersonId} → #{mr.targetPersonId}
+                          </span>
                         </p>
                       )}
                       {mr.type === "family_trees" && (
                         <p className="text-sm text-foreground">
-                          Merge Tree #{mr.sourceTreeId} into Tree #
-                          {mr.targetTreeId}
+                          Merge{" "}
+                          <Link
+                            className="font-medium text-primary hover:underline"
+                            href={`/trees/${mr.sourceTreeId}`}
+                          >
+                            {mr.sourceTree?.name || `Tree #${mr.sourceTreeId}`}
+                          </Link>{" "}
+                          into{" "}
+                          <Link
+                            className="font-medium text-primary hover:underline"
+                            href={`/trees/${mr.targetTreeId}`}
+                          >
+                            {mr.targetTree?.name || `Tree #${mr.targetTreeId}`}
+                          </Link>
+                          <span className="ms-1 font-mono text-[10px] text-muted-foreground">
+                            #{mr.sourceTreeId} → #{mr.targetTreeId}
+                          </span>
                         </p>
                       )}
 

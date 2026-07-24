@@ -1,13 +1,21 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+  Layer order: Tailwind preflight must sit below Radix Themes so Theme
+  component styles (e.g. Button backgrounds) are not wiped by resets.
+  See https://www.radix-ui.com/themes/docs/overview/styling
+*/
+@layer tw-base, radix, tw-components, tw-utilities;
+
+@import "tailwindcss/base.css" layer(tw-base);
+@import "@radix-ui/themes/styles.css" layer(radix);
+@import "tailwindcss/components.css" layer(tw-components);
+@import "tailwindcss/utilities.css" layer(tw-utilities);
 
 /*
   Ukoo brand palette (from public/logos):
   Teal: #49838F, #215563 | Gold/sand: #CDB185, #BB885E, #D0B287 | Deep neutrals: #261516, #332429, #3A2F32
 */
 
-@layer base {
+@layer tw-base {
   :root {
     --background: 40 28% 97%;
     --foreground: 345 28% 14%;
@@ -40,7 +48,8 @@
     --radius: 0.625rem;
   }
 
-  .dark {
+  .dark,
+  .dark-theme {
     --background: 355 26% 9%;
     --foreground: 40 18% 94%;
 
@@ -69,12 +78,11 @@
     --input: 345 14% 22%;
     --ring: 192 33% 50%;
   }
-}
 
-@layer base {
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground antialiased;
   }

@@ -6,11 +6,27 @@ import Link from "next/link";
 
 import { Button } from "@/src/components/ui/button";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@/src/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/src/components/ui/alert-dialog";
+import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
 } from "@/src/components/ui/card";
+import { DatePicker } from "@/src/components/ui/date-picker";
 import { Input } from "@/src/components/ui/input";
 import { Label } from "@/src/components/ui/label";
 import {
@@ -27,8 +43,9 @@ import {
   formatPersonDisplayName,
   getPersonInitials,
 } from "@/src/lib/personDisplayName";
-import { apiGetData } from "@/src/lib/api-fetch";
+import { apiGetData, ApiFetchError } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
+import { NotFoundView } from "@/src/components/NotFoundView";
 
 interface Relationship {
   id: number;
@@ -40,6 +57,7 @@ interface Relationship {
   ceremonyType?: string;
   unionOrder?: number;
   notes?: string;
+  canUnlink?: boolean;
 }
 
 interface LifeEvent {
@@ -120,7 +138,7 @@ export default function PersonDetailPage() {
   const { id } = useParams<{ id: string }>();
   const personIdNum = Number(id);
 
-  const { data: bundle, isPending, refetch } = useQuery({
+  const { data: bundle, isPending, isError, error, refetch } = useQuery({
     queryKey: queryKeys.persons.detail(id ?? ""),
     queryFn: () =>
       apiGetData<{
@@ -129,6 +147,15 @@ export default function PersonDetailPage() {
         lifeEvents: LifeEvent[];
       }>(`/api/persons/${id}`),
     enabled: !!id,
+    retry: (failureCount, err) => {
+      if (
+        err instanceof ApiFetchError &&
+        (err.status === 403 || err.status === 404)
+      ) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
 
   const person = bundle?.person ?? null;
@@ -161,6 +188,15 @@ export default function PersonDetailPage() {
       queryFn: () =>
         apiGetData<{ person: Person }>(`/api/persons/${oid}`),
       staleTime: 60_000,
+      retry: (failureCount: number, err: Error) => {
+        if (
+          err instanceof ApiFetchError &&
+          (err.status === 403 || err.status === 404)
+        ) {
+          return false;
+        }
+        return failureCount < 2;
+      },
     })),
   });
 
@@ -172,7 +208,13 @@ export default function PersonDetailPage() {
   const [showAddEvent, setShowAddEvent] = useState(false);
   const [codeCopied, setCodeCopied] = useState(false);
   const [relRemoveError, setRelRemoveError] = useState("");
+  const [relRemoveNotice, setRelRemoveNotice] = useState("");
   const [deletingRelId, setDeletingRelId] = useState<number | null>(null);
+  const [relPendingRemove, setRelPendingRemove] = useState<{
+    rel: Relationship;
+    other?: Person;
+  } | null>(null);
+  const [removalNote, setRemovalNote] = useState("");
 
   const fetchData = () => {
     void refetch();
@@ -205,35 +247,42 @@ export default function PersonDetailPage() {
     return labels[type] || type;
   };
 
-  const removeRelationship = async (
-    rel: Relationship,
-    other: Person | undefined,
-  ) => {
-    const otherName = other
-      ? formatPersonDisplayName(other)
-      : "this person";
-    const linkDesc = relTypeLabel(rel.type, rel);
-    if (
-      !window.confirm(
-        `Remove this relationship?\n\n${linkDesc} ${otherName} (relationship #${rel.id}).\n\nRemoving a parent–child link does not undo sibling links that may have been added automatically. Use + Add afterward to link people correctly (parent must be person A for Parent → Child).`,
-      )
-    ) {
-      return;
-    }
+  const confirmRemoveRelationship = async () => {
+    if (!relPendingRemove) return;
+    const { rel } = relPendingRemove;
+    const canUnlink = !!rel.canUnlink;
     setRelRemoveError("");
+    setRelRemoveNotice("");
     setDeletingRelId(rel.id);
     try {
-      const res = await fetch(`/api/relationships/${rel.id}`, {
-        method: "DELETE",
-        credentials: "include",
-      });
+      const res = await fetch(
+        `/api/relationships/${rel.id}?personId=${encodeURIComponent(String(id))}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(
+            canUnlink ? {} : { note: removalNote.trim() || undefined },
+          ),
+        },
+      );
       const data = await res.json();
 
       if (!res.ok) {
         setRelRemoveError(data.message || "Could not remove relationship.");
-
         return;
       }
+
+      setRelPendingRemove(null);
+      setRemovalNote("");
+
+      if (data.data?.proposed || res.status === 202) {
+        setRelRemoveNotice(
+          "Removal request sent for review by the relationship creator or a steward.",
+        );
+        return;
+      }
+
       await refetch();
     } finally {
       setDeletingRelId(null);
@@ -247,11 +296,38 @@ export default function PersonDetailPage() {
       </div>
     );
   }
-  if (!person) {
+
+  if (isError || !person) {
+    const status =
+      error instanceof ApiFetchError ? error.status : undefined;
+    const message =
+      error instanceof Error ? error.message : "Person not found.";
+    const forbidden = status === 403;
+
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-destructive">
-        Person not found.
-      </div>
+      <NotFoundView
+        code={forbidden ? "403" : "404"}
+        description={
+          forbidden
+            ? message ||
+              "This person is private or outside your family graph. Ask a steward if you need access."
+            : "This person may have been removed, merged, or the link is incorrect."
+        }
+        links={[
+          { href: "/persons", label: "People" },
+          { href: "/trees", label: "Trees" },
+          { href: "/dashboard", label: "Dashboard" },
+        ]}
+        primaryHref="/persons"
+        primaryLabel="Back to People"
+        secondaryHref="/dashboard"
+        secondaryLabel="Dashboard"
+        title={
+          forbidden
+            ? "You can't view this person"
+            : "Person not found"
+        }
+      />
     );
   }
 
@@ -327,10 +403,12 @@ export default function PersonDetailPage() {
                 </Link>
               </Button>
               {person.personCode && (
-                <button
-                  className="flex items-center gap-1.5 rounded-lg border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5 text-xs font-mono text-primary transition-colors hover:bg-primary/10"
+                <Button
+                  className="border-dashed border-primary/40 bg-primary/5 font-mono text-xs text-primary hover:bg-primary/10"
+                  size="sm"
                   title="Copy person code to share with relatives"
                   type="button"
+                  variant="outline"
                   onClick={() => {
                     navigator.clipboard.writeText(person.personCode!);
                     setCodeCopied(true);
@@ -341,7 +419,7 @@ export default function PersonDetailPage() {
                   <span className="text-primary/60">
                     {codeCopied ? "✓" : "⎘"}
                   </span>
-                </button>
+                </Button>
               )}
             </div>
           </CardContent>
@@ -452,7 +530,16 @@ export default function PersonDetailPage() {
                   Parent → Child (parent as person A).
                 </p>
                 {relRemoveError && (
-                  <p className="text-sm text-destructive">{relRemoveError}</p>
+                  <Alert variant="destructive">
+                    <AlertTitle>Could not remove</AlertTitle>
+                    <AlertDescription>{relRemoveError}</AlertDescription>
+                  </Alert>
+                )}
+                {relRemoveNotice && (
+                  <Alert>
+                    <AlertTitle>Request sent</AlertTitle>
+                    <AlertDescription>{relRemoveNotice}</AlertDescription>
+                  </Alert>
                 )}
                 {relationships.length === 0 ? (
                   <p className="text-sm text-muted-foreground">
@@ -462,6 +549,7 @@ export default function PersonDetailPage() {
                   <div className="space-y-3">
                     {relationships.map((rel) => {
                       const other = getRelatedPerson(rel);
+                      const canUnlink = !!rel.canUnlink;
 
                       return (
                         <div
@@ -501,13 +589,26 @@ export default function PersonDetailPage() {
                               )}
                           </div>
                           <Button
-                            aria-label={`Remove relationship ${rel.id}`}
+                            aria-label={
+                              canUnlink
+                                ? `Remove relationship ${rel.id}`
+                                : `Request removal of relationship ${rel.id}`
+                            }
                             className="h-8 w-8 shrink-0 text-muted-foreground hover:text-destructive"
                             disabled={deletingRelId !== null}
                             size="icon"
+                            title={
+                              canUnlink
+                                ? "Remove relationship"
+                                : "Request removal (needs review)"
+                            }
                             type="button"
                             variant="ghost"
-                            onClick={() => removeRelationship(rel, other)}
+                            onClick={() => {
+                              setRelRemoveNotice("");
+                              setRemovalNote("");
+                              setRelPendingRemove({ rel, other });
+                            }}
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -616,6 +717,89 @@ export default function PersonDetailPage() {
           }}
         />
       )}
+
+      <AlertDialog
+        open={!!relPendingRemove}
+        onOpenChange={(open) => {
+          if (!open) {
+            setRelPendingRemove(null);
+            setRemovalNote("");
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {relPendingRemove?.rel.canUnlink
+                ? "Remove this relationship?"
+                : "Request relationship removal?"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {relPendingRemove
+                ? `${relTypeLabel(relPendingRemove.rel.type, relPendingRemove.rel)} ${
+                    relPendingRemove.other
+                      ? formatPersonDisplayName(relPendingRemove.other)
+                      : "this person"
+                  } (relationship #${relPendingRemove.rel.id}).`
+                : "This cannot be undone from here."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          {relPendingRemove?.rel.canUnlink ? (
+            <Alert>
+              <AlertTitle>Note</AlertTitle>
+              <AlertDescription>
+                Removing a parent–child link does not undo sibling links that may
+                have been added automatically. Use + Add afterward to link people
+                correctly (parent must be person A for Parent → Child).
+              </AlertDescription>
+            </Alert>
+          ) : (
+            <div className="space-y-3">
+              <Alert>
+                <AlertTitle>Needs review</AlertTitle>
+                <AlertDescription>
+                  You are not the creator or a steward of this person. Your
+                  request will go to the relationship creator or a steward for
+                  approval.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label htmlFor="removal-note">Reason (optional)</Label>
+                <Textarea
+                  id="removal-note"
+                  placeholder="Why should this link be removed?"
+                  rows={3}
+                  value={removalNote}
+                  onChange={(e) => setRemovalNote(e.target.value)}
+                />
+              </div>
+            </div>
+          )}
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletingRelId !== null}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className={
+                relPendingRemove?.rel.canUnlink
+                  ? "bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  : undefined
+              }
+              disabled={deletingRelId !== null}
+              onClick={(e) => {
+                e.preventDefault();
+                void confirmRemoveRelationship();
+              }}
+            >
+              {deletingRelId !== null
+                ? "Working…"
+                : relPendingRemove?.rel.canUnlink
+                  ? "Remove"
+                  : "Send request"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
@@ -686,7 +870,7 @@ function AddRelationModal({
       const d = await r.json();
 
       setResults(
-        (d.data?.persons || []).filter(
+        (Array.isArray(d.data) ? d.data : []).filter(
           (p: { id: number }) => p.id !== personId,
         ),
       );
@@ -754,10 +938,11 @@ function AddRelationModal({
             {results.length > 0 && (
               <div className="mt-1 max-h-48 overflow-y-auto rounded-md border border-border bg-popover">
                 {results.map((p) => (
-                  <button
+                  <Button
                     key={p.id}
-                    className="w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-accent"
+                    className="h-auto w-full justify-start rounded-none border-b border-border px-3 py-2 text-left text-sm font-normal last:border-0"
                     type="button"
+                    variant="ghost"
                     onClick={() => {
                       setForm((f) => ({ ...f, otherPersonId: String(p.id) }));
                       setSearch(formatPersonDisplayName(p));
@@ -765,7 +950,7 @@ function AddRelationModal({
                     }}
                   >
                     {formatPersonDisplayName(p)}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -818,11 +1003,11 @@ function AddRelationModal({
             <>
               <div className="space-y-2">
                 <Label>Marriage / Union Date</Label>
-                <Input
-                  type="date"
+                <DatePicker
+                  placeholder="Select union date"
                   value={form.startDate}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, startDate: e.target.value }))
+                  onChange={(v) =>
+                    setForm((f) => ({ ...f, startDate: v }))
                   }
                 />
               </div>
@@ -1004,12 +1189,10 @@ function AddEventModal({
           </div>
           <div className="space-y-2">
             <Label>Date</Label>
-            <Input
-              type="date"
+            <DatePicker
+              placeholder="Select event date"
               value={form.eventDate}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, eventDate: e.target.value }))
-              }
+              onChange={(v) => setForm((f) => ({ ...f, eventDate: v }))}
             />
           </div>
           <div className="space-y-2">

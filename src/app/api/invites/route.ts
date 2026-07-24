@@ -11,7 +11,6 @@ import { apiSuccess, apiError } from "@/src/lib/ApiResponse";
 import { ApiError } from "@/src/lib/ApiError";
 import { getAuthUser } from "@/src/lib/auth";
 import { sendMail } from "@/src/api/services/mail/mail.service";
-import { baseTemplate } from "@/src/api/services/mail/baseTemplate";
 import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
 
 const INVITE_TTL_DAYS = 7;
@@ -123,9 +122,9 @@ export async function POST(req: NextRequest) {
     ? `<p>You have been identified as <strong>${formatPersonDisplayName(person)}</strong> in the tree. Once you join, your profile will be linked automatically.</p>`
     : "";
 
-  const html = baseTemplate(
-    `
-    <h2 style="color:#215563;">You've been invited to join a family tree! 🌳</h2>
+  // Body only — deliverMail wraps with baseTemplate (do not wrap here or the header duplicates).
+  const html = `
+    <h2 style="color:#215563;margin:24px 0 16px;">You've been invited to join a family tree! 🌳</h2>
     <p>Hi there,</p>
     <p><strong>${inviterName}</strong> has invited you to contribute to the <strong>${tree.name}</strong> family tree on My Ukoo.</p>
     ${personClause}
@@ -137,9 +136,7 @@ export async function POST(req: NextRequest) {
       </a>
     </p>
     <p style="font-size:13px;color:#666;">This invite expires in ${INVITE_TTL_DAYS} days. If you did not expect this email, you can safely ignore it.</p>
-    `,
-    email,
-  );
+  `;
 
   await sendMail(
     email,

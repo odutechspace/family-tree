@@ -1,0 +1,33 @@
+---
+description: Keep docs/ARCHITECTURE.md in sync with user-visible features and HTTP APIs.
+alwaysApply: true
+---
+
+# Architecture document
+
+## Canonical docs
+
+- Living architecture: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md)
+- Feature map (domains, relationships, UI ↔ API): [`docs/TECHNICAL_FEATURES.md`](docs/TECHNICAL_FEATURES.md)
+
+## When to update (same change set as the code)
+
+Update `docs/ARCHITECTURE.md` when the work:
+
+- Adds, changes, or removes **user-visible behavior** (pages, flows, permissions, copy that reflects behavior), or
+- Adds, changes, or removes an **HTTP API** (Route Handlers under `src/app/api/`, request/response shape, status codes, auth requirements, redirects).
+
+For the same change set, update `docs/TECHNICAL_FEATURES.md` when you introduce or materially change a **domain capability** or **cross-entity flow** (new subsystem, new way two features connect, or a new primary UI ↔ API pairing). For small fixes, a one-line change log entry in `TECHNICAL_FEATURES.md` is enough.
+
+**Skip** updates for typo-only, formatting-only, comment-only, or internal refactors with **no** API or user-visible impact.
+
+## What to change in the doc
+
+- Edit the **smallest relevant sections** (Overview, Tech stack, Repository map, Runtime boundaries, API surface, Data model, Cross-cutting concerns).
+- In `TECHNICAL_FEATURES.md`, adjust the relevant **Domain** subsection, diagrams/tables if the mental model shifted, and **Change log (technical features)**.
+- Add a bullet under **Change log (architecture)** with the date, a one-line summary, and which sections you touched.
+- Prefer **paths and short descriptions** over large code blocks. Link to handlers or entities instead of pasting implementations.
+
+## If unsure
+
+Default to a **short note** in the appropriate section plus a **change log** line so the doc stays honest without over-documenting internals.

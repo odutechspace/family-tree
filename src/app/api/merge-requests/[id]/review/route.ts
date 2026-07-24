@@ -6,13 +6,13 @@ import {
   MergeRequestStatus,
   MergeRequestType,
 } from "@/src/api/entities/MergeRequest";
-import { Person } from "@/src/api/entities/Person";
 import { FamilyTreeMember } from "@/src/api/entities/FamilyTreeMember";
 import { XPEventType } from "@/src/api/entities/XPEvent";
 import { ApiError } from "@/src/lib/ApiError";
 import { apiError, apiSuccess } from "@/src/lib/ApiResponse";
 import { getAuthUser } from "@/src/lib/auth";
 import { awardXP } from "@/src/api/services/gamification/gamification.service";
+import { mergePersons } from "@/src/api/services/merge.service";
 
 export async function POST(
   req: NextRequest,
@@ -54,17 +54,24 @@ export async function POST(
 
   if (decision === "approved") {
     if (mr.type === MergeRequestType.DUPLICATE_PERSON) {
-      // Merge duplicate person: move all relationships and events from source to target, then delete source
-      await mergeDuplicatePersons(mr.sourcePersonId, mr.targetPersonId);
+      if (!mr.sourcePersonId || !mr.targetPersonId) {
+        return apiError(
+          ApiError.badRequest("Missing source/target person for merge."),
+        );
+      }
+      await mergePersons(
+        mr.sourcePersonId,
+        mr.targetPersonId,
+        user.id,
+        mr.id,
+      );
     } else if (mr.type === MergeRequestType.FAMILY_TREES) {
-      // Merge trees: move all members from source tree to target tree
       await mergeFamilyTrees(mr.sourceTreeId, mr.targetTreeId);
     }
   }
 
   await repo.save(mr);
 
-  // Award XP to the requester when their merge is approved
   if (decision === "approved" && mr.requestedByUserId) {
     await awardXP(
       mr.requestedByUserId,
@@ -75,37 +82,6 @@ export async function POST(
   }
 
   return apiSuccess({ mergeRequest: mr }, `Merge request ${decision}`);
-}
-
-async function mergeDuplicatePersons(sourceId: number, targetId: number) {
-  const relRepo = AppDataSource.getRepository("Relationship");
-  const eventRepo = AppDataSource.getRepository("LifeEvent");
-  const personRepo = AppDataSource.getRepository(Person);
-
-  // Re-point relationships
-  await relRepo
-    .createQueryBuilder()
-    .update()
-    .set({ personAId: targetId } as any)
-    .where("personAId = :id", { id: sourceId })
-    .execute();
-  await relRepo
-    .createQueryBuilder()
-    .update()
-    .set({ personBId: targetId } as any)
-    .where("personBId = :id", { id: sourceId })
-    .execute();
-
-  // Re-point life events
-  await eventRepo
-    .createQueryBuilder()
-    .update()
-    .set({ personId: targetId } as any)
-    .where("personId = :id", { id: sourceId })
-    .execute();
-
-  // Delete the source duplicate
-  await personRepo.delete(sourceId);
 }
 
 async function mergeFamilyTrees(sourceTreeId: number, targetTreeId: number) {
@@ -127,7 +103,6 @@ async function mergeFamilyTrees(sourceTreeId: number, targetTreeId: number) {
       );
     }
   }
-  // Remove the source tree's members and delete the tree
   await memberRepo.delete({ treeId: sourceTreeId });
   await treeRepo.delete(sourceTreeId);
 }

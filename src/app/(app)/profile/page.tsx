@@ -10,6 +10,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/src/hooks/useAuth";
+import { ProfilePhotoField } from "@/src/components/profile/ProfilePhotoField";
 import { Button } from "@/src/components/ui/button";
 import {
   Card,
@@ -19,6 +20,7 @@ import {
   CardTitle,
 } from "@/src/components/ui/card";
 import { Input } from "@/src/components/ui/input";
+import { PasswordInput } from "@/src/components/ui/password-input";
 import { Label } from "@/src/components/ui/label";
 import {
   Select,
@@ -28,8 +30,9 @@ import {
   SelectValue,
 } from "@/src/components/ui/select";
 import { formatPersonDisplayName } from "@/src/lib/personDisplayName";
-import { apiGetData } from "@/src/lib/api-fetch";
+import { apiGetData, apiGetPersonList } from "@/src/lib/api-fetch";
 import { queryKeys } from "@/src/lib/query-keys";
+import { isAllowedProfilePhotoUrl } from "@/src/lib/dicebear";
 
 interface PersonOption {
   id: number;
@@ -86,35 +89,59 @@ export default function ProfilePage() {
       limit: 30,
     }),
     queryFn: () =>
-      apiGetData<{ persons: PersonOption[] }>(
+      apiGetPersonList<PersonOption>(
         `/api/persons?search=${encodeURIComponent(debouncedPersonSearch)}&limit=30`,
       ),
   });
+
+  const linkedFromAuth = user?.linkedPerson
+    ? ({
+        id: user.linkedPerson.id,
+        firstName: user.linkedPerson.firstName,
+        middleName: user.linkedPerson.middleName ?? undefined,
+        lastName: user.linkedPerson.lastName,
+        maidenName: user.linkedPerson.maidenName ?? undefined,
+        nickname: user.linkedPerson.nickname ?? undefined,
+      } satisfies PersonOption)
+    : null;
 
   const linkedNumeric =
     linkedPersonId === "" ? null : Number(linkedPersonId);
   const linkedValid =
     linkedNumeric != null && !Number.isNaN(linkedNumeric);
 
-  const { data: linkedBundle } = useQuery({
+  const { data: linkedBundle, isFetched: linkedFetched } = useQuery({
     queryKey: queryKeys.persons.detail(linkedNumeric ?? 0),
     queryFn: () =>
       apiGetData<{ person: PersonOption }>(`/api/persons/${linkedNumeric}`),
-    enabled: linkedValid,
+    enabled: linkedValid && !linkedFromAuth,
   });
 
+  const linkedPersonOption =
+    linkedFromAuth && linkedFromAuth.id === linkedNumeric
+      ? linkedFromAuth
+      : (linkedBundle?.person ?? null);
+
   const linkedLabel = linkedValid
-    ? linkedBundle?.person
-      ? formatPersonDisplayName(linkedBundle.person)
+    ? linkedPersonOption
+      ? formatPersonDisplayName(linkedPersonOption)
       : `Person #${linkedNumeric}`
     : null;
 
   const personOptions = useMemo(() => {
-    const fromSearch = searchData?.persons ?? [];
-    const p = linkedBundle?.person;
+    const fromSearch = searchData?.items ?? [];
+    const p = linkedPersonOption;
     if (!p) return fromSearch;
-    return fromSearch.some((x) => x.id === p.id) ? fromSearch : [p, ...fromSearch];
-  }, [searchData, linkedBundle]);
+    return fromSearch.some((x) => x.id === p.id)
+      ? fromSearch
+      : [p, ...fromSearch];
+  }, [searchData, linkedPersonOption]);
+
+  // Radix Select only shows a value when a matching SelectItem exists
+  const linkSelectReady =
+    !linkedValid ||
+    !!linkedPersonOption ||
+    (linkedFetched && !linkedFromAuth);
 
   const saveProfileMutation = useMutation({
     mutationFn: async (body: Record<string, unknown>) => {
@@ -154,8 +181,13 @@ export default function ProfilePage() {
     e.preventDefault();
     setProfileErr("");
     setProfileMsg("");
+    const trimmedPhoto = profilePhotoUrl.trim();
+    if (trimmedPhoto && !isAllowedProfilePhotoUrl(trimmedPhoto)) {
+      setProfileErr("Profile photo must be an http(s) URL or an uploaded image.");
+      return;
+    }
     const body: Record<string, unknown> = { name: name.trim() };
-    body.profilePhotoUrl = profilePhotoUrl.trim() || null;
+    body.profilePhotoUrl = trimmedPhoto || null;
     if (linkedPersonId === "") {
       body.linkedPersonId = null;
     } else {
@@ -167,7 +199,10 @@ export default function ProfilePage() {
       body.linkedPersonId = n;
     }
     saveProfileMutation.mutate(body, {
-      onSuccess: () => setProfileMsg("Profile saved."),
+      onSuccess: async () => {
+        setProfileMsg("Profile saved.");
+        await queryClient.invalidateQueries({ queryKey: queryKeys.auth.me });
+      },
       onError: (err) =>
         setProfileErr(err instanceof Error ? err.message : "Update failed."),
     });
@@ -303,19 +338,13 @@ export default function ProfilePage() {
                   onChange={(e) => setName(e.target.value)}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="photoUrl">Profile photo URL</Label>
-                <Input
-                  id="photoUrl"
-                  placeholder="https://…"
-                  type="url"
-                  value={profilePhotoUrl}
-                  onChange={(e) => setProfilePhotoUrl(e.target.value)}
-                />
-                <p className="text-muted-foreground text-xs">
-                  Leave empty to remove your photo.
-                </p>
-              </div>
+              <ProfilePhotoField
+                disabled={savingProfile}
+                displayName={name || user.displayName || user.name}
+                initials={user.initials}
+                value={profilePhotoUrl}
+                onChange={setProfilePhotoUrl}
+              />
               <div className="space-y-2">
                 <Label>Link to your person record</Label>
                 <p className="text-muted-foreground text-xs">
@@ -336,22 +365,31 @@ export default function ProfilePage() {
                   value={personSearch}
                   onChange={(e) => setPersonSearch(e.target.value)}
                 />
-                <Select
-                  value={selectValue}
-                  onValueChange={(v) => setLinkedPersonId(v === NONE ? "" : v)}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Choose a person" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value={NONE}>— Not linked —</SelectItem>
-                    {personOptions.map((p) => (
-                      <SelectItem key={p.id} value={String(p.id)}>
-                        {formatPersonDisplayName(p)}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {linkSelectReady ? (
+                  <Select
+                    key={`link-${selectValue}`}
+                    value={selectValue}
+                    onValueChange={(v) =>
+                      setLinkedPersonId(v === NONE ? "" : v)
+                    }
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Choose a person" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value={NONE}>— Not linked —</SelectItem>
+                      {personOptions.map((p) => (
+                        <SelectItem key={p.id} value={String(p.id)}>
+                          {formatPersonDisplayName(p)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <div className="flex h-9 w-full items-center rounded-md border border-input px-3 text-sm text-muted-foreground">
+                    Loading linked person…
+                  </div>
+                )}
               </div>
               <Button disabled={savingProfile} type="submit">
                 {savingProfile ? "Saving…" : "Save profile"}
@@ -378,32 +416,29 @@ export default function ProfilePage() {
             <form className="space-y-4 max-w-md" onSubmit={onChangePassword}>
               <div className="space-y-2">
                 <Label htmlFor="currentPwd">Current password</Label>
-                <Input
+                <PasswordInput
                   autoComplete="current-password"
                   id="currentPwd"
-                  type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="newPwd">New password</Label>
-                <Input
+                <PasswordInput
                   autoComplete="new-password"
                   id="newPwd"
                   minLength={8}
-                  type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="confirmPwd">Confirm new password</Label>
-                <Input
+                <PasswordInput
                   autoComplete="new-password"
                   id="confirmPwd"
                   minLength={8}
-                  type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                 />

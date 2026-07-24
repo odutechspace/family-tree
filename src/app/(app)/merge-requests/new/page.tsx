@@ -96,7 +96,10 @@ function NewMergeRequestForm() {
     );
     const data = await res.json();
 
-    setResults((r) => ({ ...r, [field]: data.data?.persons || [] }));
+    setResults((r) => ({
+      ...r,
+      [field]: Array.isArray(data.data) ? data.data : [],
+    }));
   };
 
   useEffect(() => {
@@ -174,10 +177,11 @@ function NewMergeRequestForm() {
       {results[field].length > 0 && (
         <div className="mt-1 max-h-40 overflow-y-auto rounded-md border border-border bg-popover">
           {results[field].map((p: Person) => (
-            <button
+            <Button
               key={p.id}
-              className="w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 hover:bg-accent"
+              className="h-auto w-full justify-start rounded-none border-b border-border px-3 py-2 text-left text-sm font-normal last:border-0"
               type="button"
+              variant="ghost"
               onClick={() => {
                 setForm((f) => ({ ...f, [formKey]: String(p.id) }));
                 setLabels((l) => ({
@@ -188,7 +192,7 @@ function NewMergeRequestForm() {
               }}
             >
               {formatPersonDisplayName(p)}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -343,10 +347,11 @@ function NewMergeRequestForm() {
                     {results.sourceTree.length > 0 && (
                       <div className="mt-1 rounded-md border border-border bg-popover">
                         {results.sourceTree.map((t: FamilyTree) => (
-                          <button
+                          <Button
                             key={t.id}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                            className="h-auto w-full justify-start rounded-none px-3 py-2 text-left text-sm font-normal"
                             type="button"
+                            variant="ghost"
                             onClick={() => {
                               setForm((f) => ({
                                 ...f,
@@ -360,7 +365,7 @@ function NewMergeRequestForm() {
                             }}
                           >
                             {t.name}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}
@@ -380,10 +385,11 @@ function NewMergeRequestForm() {
                     {results.targetTree.length > 0 && (
                       <div className="mt-1 rounded-md border border-border bg-popover">
                         {results.targetTree.map((t: FamilyTree) => (
-                          <button
+                          <Button
                             key={t.id}
-                            className="w-full px-3 py-2 text-left text-sm hover:bg-accent"
+                            className="h-auto w-full justify-start rounded-none px-3 py-2 text-left text-sm font-normal"
                             type="button"
+                            variant="ghost"
                             onClick={() => {
                               setForm((f) => ({
                                 ...f,
@@ -397,7 +403,7 @@ function NewMergeRequestForm() {
                             }}
                           >
                             {t.name}
-                          </button>
+                          </Button>
                         ))}
                       </div>
                     )}
