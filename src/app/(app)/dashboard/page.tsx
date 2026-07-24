@@ -364,11 +364,11 @@ export default function DashboardPage() {
               <CardTitle className="text-base">Your people</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-wrap gap-3">
+              <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 md:grid-cols-6">
                 {yourPeople.map((p) => (
                   <Link
                     key={p.id}
-                    className="flex w-[88px] flex-col items-center gap-1 hover:opacity-90"
+                    className="flex min-w-0 flex-col items-center gap-1 hover:opacity-90"
                     href={`/persons/${p.id}`}
                     title={`${p.label} · ${p.relation}`}
                   >
